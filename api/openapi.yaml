@@ -1,0 +1,360 @@
+openapi: 3.1.0
+info:
+  title: Finance Transaction Ingestion API
+  version: 0.1.0
+  description: |
+    MVP contract. ONLY `POST /api/v1/transactions` is defined for the MVP;
+    no PUT/PATCH, no pending/settled lifecycle, no source-field update
+    endpoints, and no CORS configuration.
+
+    Money is represented as integer minor units (`amount_minor`); never float.
+
+    Idempotency: `(source_mailbox, gmail_message_id)` is the unique source
+    identity pair. A semantically identical retry returns 200 with the
+    existing transaction; the same identity with changed source-owned values
+    returns 409.
+  license:
+    name: Unlicense
+externalDocs:
+  description: Field definitions mirror the frozen PostgreSQL schema.
+  url: https://github.com/pakatagoh/finance
+servers:
+  - url: /api/v1
+    description: Relative base path (reverse-proxied deployment).
+tags:
+  - name: transactions
+    description: Transaction creation (ingestion pipeline).
+paths:
+  /transactions:
+    post:
+      operationId: createTransaction
+      summary: Create a transaction (idempotent by source identity)
+      description: |
+        Creates exactly one transaction from a parsed bank email. FROZEN
+        CONTRACT — request field names, enums, and constraints MUST match
+        the PostgreSQL schema exactly.
+
+        Semantics by outcome:
+        - `201` — new transaction created.
+        - `200` — idempotent retry: same `(source_mailbox, gmail_message_id)`
+          and all source-owned values semantically identical; returns the
+          existing transaction.
+        - `409` — same source identity but one or more source-owned values
+          differ.
+        - `422` — request violates the frozen contract (missing/invalid
+          amount, currency, direction, source identity, or timestamp).
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+            examples:
+              cardPurchase:
+                summary: Card purchase (debit)
+                value:
+                  source_mailbox: user@example.com
+                  gmail_message_id: 18f3a9c2b7d1e4f5
+                  occurred_at: '2026-09-03T08:15:00Z'
+                  timestamp_source: transaction
+                  source_occurred_text: '03 Sep 2026, 08:15 SGT'
+                  bank: dbs
+                  source_type: email
+                  kind: card_purchase
+                  direction: debit
+                  currency: SGD
+                  amount_minor: 1250
+                  card_suffix: '1234'
+                  payee: null
+                  merchant: Grab
+              paynow:
+                summary: PayNow transfer (debit)
+                value:
+                  source_mailbox: user@example.com
+                  gmail_message_id: 18f3b0d4e9a2c6f7
+                  occurred_at: '2026-09-02T19:40:00Z'
+                  timestamp_source: email_received
+                  source_occurred_text: '02 Sep 2026, 19:40'
+                  bank: ocbc
+                  source_type: email
+                  kind: paynow
+                  direction: debit
+                  currency: SGD
+                  amount_minor: 89000
+                  card_suffix: null
+                  from_account_suffix: '5678'
+                  payee: +6591234567
+                  merchant: null
+      responses:
+        '201':
+          description: Transaction created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '200':
+          description: |
+            Idempotent retry — the request is semantically identical to an
+            already-processed one (same source identity, same source-owned
+            values). Returns the existing transaction; nothing is created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '409':
+          description: |
+            Conflict — same `(source_mailbox, gmail_message_id)` identity as
+            an existing transaction, but at least one source-owned value
+            differs. No state change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: |
+            Unprocessable Entity — missing or invalid amount, currency,
+            direction, source identity, or timestamp (contract violation).
+            No state change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Absent or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected storage failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    TimestampSource:
+      type: string
+      description: Provenance of `occurred_at`.
+      enum:
+        - transaction
+        - email_received
+        - inferred
+    TransactionKind:
+      type: string
+      description: FROZEN enum — mirrors PostgreSQL schema.
+      enum:
+        - card_purchase
+        - paynow
+        - funds_transfer
+        - incoming_transfer
+        - reversal
+    Direction:
+      type: string
+      description: FROZEN enum — mirrors PostgreSQL schema.
+      enum:
+        - debit
+        - credit
+    CreateTransactionRequest:
+      type: object
+      description: |
+        FROZEN CONTRACT. Field names MUST match the PostgreSQL schema
+        exactly. `card_suffix`, `from_account_suffix`, `payee`, and
+        `merchant` are nullable and optional; every other field is
+        required and non-nullable.
+      required:
+        - source_mailbox
+        - gmail_message_id
+        - occurred_at
+        - timestamp_source
+        - source_occurred_text
+        - bank
+        - source_type
+        - kind
+        - direction
+        - currency
+        - amount_minor
+      additionalProperties: false
+      properties:
+        source_mailbox:
+          type: string
+          description: Mailbox the source email was ingested from. Part of the idempotency identity pair.
+        gmail_message_id:
+          type: string
+          description: Gmail message ID of the source email. Part of the idempotency identity pair; unique together with `source_mailbox`.
+        occurred_at:
+          type: string
+          format: date-time
+          description: Transaction timestamp as RFC3339 UTC (Z-suffixed).
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+        timestamp_source:
+          $ref: '#/components/schemas/TimestampSource'
+        source_occurred_text:
+          type: string
+          description: Raw timestamp text as it appeared in the source email.
+        bank:
+          type: string
+          description: Issuing bank identifier from the source email.
+        source_type:
+          type: string
+          description: Source channel type (e.g. `email`).
+        kind:
+          $ref: '#/components/schemas/TransactionKind'
+        direction:
+          $ref: '#/components/schemas/Direction'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO 4217 currency code, exactly 3 characters (e.g. `SGD`).
+        amount_minor:
+          type: integer
+          minimum: 1
+          exclusiveMinimum: 0
+          description: Amount in integer minor units (cents). Never float. Must be > 0.
+        card_suffix:
+          type:
+            - string
+            - 'null'
+          description: Last digits of the card used, when applicable; otherwise null.
+        from_account_suffix:
+          type:
+            - string
+            - 'null'
+          description: Suffix of the source account for transfers; otherwise null.
+        payee:
+          type:
+            - string
+            - 'null'
+          description: Payee identifier (e.g. PayNow NRIC/mobile/UEN); otherwise null.
+        merchant:
+          type:
+            - string
+            - 'null'
+          description: Merchant name for card purchases; otherwise null.
+    Transaction:
+      type: object
+      description: Persisted transaction. All request fields plus server-assigned columns.
+      required:
+        - id
+        - source_mailbox
+        - gmail_message_id
+        - occurred_at
+        - timestamp_source
+        - source_occurred_text
+        - bank
+        - source_type
+        - kind
+        - direction
+        - currency
+        - amount_minor
+        - category_id
+        - notes
+        - created_at
+        - updated_at
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Server-assigned transaction UUID.
+        source_mailbox:
+          type: string
+        gmail_message_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC.
+        timestamp_source:
+          $ref: '#/components/schemas/TimestampSource'
+        source_occurred_text:
+          type: string
+        bank:
+          type: string
+        source_type:
+          type: string
+        kind:
+          $ref: '#/components/schemas/TransactionKind'
+        direction:
+          $ref: '#/components/schemas/Direction'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        amount_minor:
+          type: integer
+          minimum: 1
+          description: Integer minor units; never float.
+        card_suffix:
+          type:
+            - string
+            - 'null'
+        from_account_suffix:
+          type:
+            - string
+            - 'null'
+        payee:
+          type:
+            - string
+            - 'null'
+        merchant:
+          type:
+            - string
+            - 'null'
+        category_id:
+          type:
+            - string
+            - 'null'
+          format: uuid
+          description: Assigned category UUID; null until categorised.
+        notes:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+          description: Free-form notes; max 2000 chars; null when unset.
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC, server-assigned.
+        updated_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC, server-assigned.
+    Error:
+      type: object
+      description: Error envelope for 409 / 422 / 401 / 500 responses.
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable code, e.g. `conflict`, `unprocessable_entity`, `unauthorized`, `internal`.
+              examples:
+                - unprocessable_entity
+            message:
+              type: string
+              description: Human-readable summary.
+            detail:
+              type: string
+              description: Field-level detail for 422 (which field failed and why).
+            fields:
+              type: array
+              description: Names of offending fields, for 422.
+              items:
+                type: string

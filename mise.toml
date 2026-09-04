@@ -1,0 +1,67 @@
+# Development toolchain and deterministic local environment.
+# Values below are for local development only; never use them in production.
+
+[tools]
+go = "1.27.1"
+"go:github.com/a-h/templ/cmd/templ" = "v0.3.960"
+"go:github.com/pressly/goose/v3/cmd/goose" = "v3.26.0"
+"github:tailwindlabs/tailwindcss" = "v4.3.3"
+"go:github.com/air-verse/air" = "v1.62.0"
+
+[env]
+DATABASE_URL = "postgres://finance:finance@localhost:5432/finance?sslmode=disable"
+FINANCE_API_TOKEN = "finance-dev-token-not-secret"
+APP_ORIGIN = "http://localhost:8080"
+DISPLAY_TIMEZONE = "Asia/Singapore"
+
+[tasks.db-up]
+description = "Start the PostgreSQL development database"
+run = "docker compose up -d postgres"
+
+[tasks.db-ready]
+description = "Wait until PostgreSQL accepts connections"
+run = "for attempt in $(seq 1 15); do docker compose exec -T postgres pg_isready -U finance -d finance && exit 0; sleep 2; done; echo 'PostgreSQL did not become ready in 30 seconds' >&2; exit 1"
+
+[tasks.db-down]
+description = "Stop the PostgreSQL development database"
+run = "docker compose down"
+
+[tasks.db-reset]
+description = "Recreate the empty PostgreSQL database volume"
+run = "docker compose down -v && docker compose up -d postgres && mise run db-migrate"
+
+[tasks.db-migrate]
+description = "Apply pending Goose migrations"
+depends = ["db-ready"]
+run = "goose -dir internal/migrations postgres \"$DATABASE_URL\" up"
+
+[tasks.seed-categories]
+description = "Seed the initial category set once"
+depends = ["db-migrate"]
+run = "go run ./cmd/finance seed initial-categories"
+
+[tasks.generate]
+description = "Generate templ Go files"
+run = "templ generate"
+
+[tasks.css]
+description = "Build minified Tailwind and daisyUI CSS"
+run = "tailwindcss -i assets/css/input.css -o static/css/app.css --minify"
+
+[tasks.dev]
+description = "Run the development server with Air"
+run = "air"
+
+[tasks.test-unit]
+description = "Run unit tests"
+run = "go test ./..."
+
+[tasks.test-integration]
+description = "Run integration tests"
+depends = ["db-up", "db-ready"]
+run = "go test -tags=integration ./..."
+
+[tasks.test]
+description = "Run the complete test suite"
+depends = ["test-unit", "test-integration"]
+run = "go test ./..."

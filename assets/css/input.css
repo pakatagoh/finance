@@ -1,0 +1,27 @@
+/* Tailwind CSS v4 entry — built with the Tailwind standalone CLI (see docs/ASSETS.md).
+   daisyUI is loaded via the documented standalone-CLI flow
+   (daisyui.mjs / daisyui-theme.mjs from daisyUI GitHub releases, vendored next to this file). */
+@import "tailwindcss";
+@plugin "./daisyui.mjs";
+/* Optional for custom themes – see https://daisyui.com/docs/themes/#how-to-add-a-new-custom-theme */
+@plugin "./daisyui-theme.mjs" {
+  name: "finance";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-base-200: oklch(97% 0.014 254.604);
+  --color-base-300: oklch(92% 0.013 255.508);
+  --color-primary: oklch(55% 0.2 258);
+  --color-primary-content: oklch(98% 0.01 258);
+  --color-secondary: oklch(65% 0.15 200);
+  --color-secondary-content: oklch(98% 0.01 200);
+  --color-accent: oklch(70% 0.15 160);
+  --color-accent-content: oklch(98% 0.01 160);
+  --color-neutral: oklch(37% 0.013 285.885);
+  --color-neutral-content: oklch(98% 0 0);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+}

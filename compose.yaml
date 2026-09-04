@@ -1,0 +1,37 @@
+# PostgreSQL-only development environment for the finance project.
+#
+# Deterministic non-secret dev credentials (NOT for production):
+#   DATABASE_URL=postgres://finance:finance@localhost:5432/finance?sslmode=disable
+#
+# Usage:
+#   docker compose up -d            # start (empty database, no seeding)
+#   docker compose down -v          # stop and remove the data volume (recreate-empty)
+# See docs/compose.md for details.
+
+services:
+  postgres:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: finance
+      POSTGRES_DB: finance
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume (explicit name, not project-prefixed). Holds the data
+      # directory; the 18.x image stores its cluster at
+      # /var/lib/postgresql/18/docker, which lives under this mount.
+      - finance_pgdata:/var/lib/postgresql
+    healthcheck:
+      # Bounded readiness probe: up to 15 tries every 2s, 3s timeout each
+      # (~30s worst case plus start_period) before the container is marked
+      # unhealthy.
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  finance_pgdata:
+    name: finance_pgdata

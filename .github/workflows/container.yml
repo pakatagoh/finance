@@ -1,0 +1,121 @@
+name: Finance CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18.6-bookworm
+        env:
+          POSTGRES_USER: finance
+          POSTGRES_PASSWORD: finance
+          POSTGRES_DB: finance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finance -d finance"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://finance:finance@localhost:5432/finance?sslmode=disable
+      FINANCE_API_TOKEN: finance-ci-token
+      APP_ORIGIN: http://localhost:8080
+      DISPLAY_TIMEZONE: UTC
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install generation tools
+        run: |
+          go install github.com/a-h/templ/cmd/templ@v0.3.960
+          curl --fail --silent --show-error --location \
+            https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/tailwindcss-linux-x64 \
+            --output "$RUNNER_TEMP/tailwindcss"
+          echo "dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a  $RUNNER_TEMP/tailwindcss" | sha256sum --check
+          chmod 0755 "$RUNNER_TEMP/tailwindcss"
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Generate templ files
+        run: |
+          templ generate
+          git diff --exit-code -- '*.templ' '*_templ.go'
+
+      - name: Generate CSS
+        run: tailwindcss -i assets/css/input.css -o static/css/app.css --minify
+
+      - name: Run unit tests
+        run: go test ./...
+
+      - name: Run integration tests
+        run: go test -tags=integration ./...
+
+      - name: Test clean migrations
+        run: go run ./cmd/finance migrate
+
+      - name: Test repeated migrations
+        run: |
+          go run ./cmd/finance migrate
+          go run ./cmd/finance migrate
+
+      - name: Build container image
+        run: docker build --tag finance:ci .
+
+  publish:
+    name: Publish image
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: tag
+        run: echo "value=$(date +%s%3N)-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/pakatagoh/finance:${{ steps.tag.outputs.value }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Retain newest 10 image versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: finance
+          package-type: container
+          min-versions-to-keep: 10

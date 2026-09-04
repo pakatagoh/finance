@@ -8,10 +8,27 @@ transactions.
 - Authenticated ingestion API for importing source transactions
 - Category and notes editing through the browser UI
 
-## Development
+## Getting started
 
-See the documentation under `docs/` for the local database, browser security,
-and asset build workflows.
+Local development uses [mise](https://mise.jdx.dev/) for the pinned Go,
+templ, Goose, Tailwind, and Air toolchain, and Docker Compose for PostgreSQL.
+
+From the repository root:
+
+```sh
+mise trust
+mise install
+mise run db-up
+mise run db-migrate
+mise run seed-categories
+mise run generate
+mise run css
+mise run dev
+```
+
+The development server runs at <http://localhost:8080>. `db-up` starts the
+PostgreSQL container, while the migration and seed tasks initialize the local
+database. The database is intentionally empty until those tasks are run.
 
 ### Styling
 
@@ -21,18 +38,16 @@ edit `static/css/app.css` by hand.
 
 The source stylesheet is `assets/css/input.css`. It imports Tailwind and loads
 the vendored daisyUI plugins from `assets/css/daisyui.mjs` and
-`assets/css/daisyui-theme.mjs`. Generate the minified browser stylesheet from
-the repository root with:
+`assets/css/daisyui-theme.mjs`. Rebuild the minified browser stylesheet with:
 
 ```sh
 mise run css
 ```
 
-This writes the generated output to `static/css/app.css`. The same build step
-runs in CI and in the Docker image build. See [`docs/ASSETS.md`](docs/ASSETS.md)
-for the asset provenance and rebuild details.
+This writes the generated output to `static/css/app.css`. Run it after changing
+CSS inputs or template classes. The same build step runs in CI and in the Docker
+image build. See [`docs/ASSETS.md`](docs/ASSETS.md) for the asset provenance and
+rebuild details.
 
-## Status
-
-Under active development. See `PACKAGE_BOUNDARIES.md` for the module map and
-architecture rules.
+See the documentation under `docs/` for the local database, browser security,
+and asset build workflows.

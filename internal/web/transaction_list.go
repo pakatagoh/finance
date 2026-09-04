@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
-	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 	"github.com/pakatagoh/finance/internal/web/ui"
 )
 
 type transactionListQuerier interface {
-	ListTransactions(context.Context, storage.TransactionFilter, int) (storage.TransactionPage, error)
+	Execute(context.Context, transactions.Filter, int) (transactions.Page, error)
 }
 
 func TransactionsHandler(store transactionListQuerier) http.Handler {
@@ -21,10 +21,7 @@ func TransactionsHandler(store transactionListQuerier) http.Handler {
 			return
 		}
 		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-		if page < 1 {
-			page = 1
-		}
-		p, err := store.ListTransactions(r.Context(), storage.TransactionFilter{Bank: r.URL.Query().Get("bank"), Type: r.URL.Query().Get("type"), Category: r.URL.Query().Get("category")}, page)
+		p, err := store.Execute(r.Context(), transactions.Filter{Bank: r.URL.Query().Get("bank"), Type: r.URL.Query().Get("type"), Category: r.URL.Query().Get("category")}, page)
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return

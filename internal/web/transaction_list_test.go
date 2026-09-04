@@ -8,23 +8,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 )
 
 type listStoreStub struct {
-	page      storage.TransactionPage
-	gotFilter storage.TransactionFilter
+	page      transactions.Page
+	gotFilter transactions.Filter
 	gotPage   int
 }
 
-func (s *listStoreStub) ListTransactions(_ context.Context, f storage.TransactionFilter, p int) (storage.TransactionPage, error) {
+func (s *listStoreStub) Execute(_ context.Context, f transactions.Filter, p int) (transactions.Page, error) {
 	s.gotFilter = f
 	s.gotPage = p
 	return s.page, nil
 }
 
 func TestTransactionsHandlerEmptyStateFullAndHTMX(t *testing.T) {
-	s := &listStoreStub{page: storage.TransactionPage{Filter: storage.TransactionFilter{Bank: "DBS", Type: "card", Category: "Food"}, Page: 2}}
+	s := &listStoreStub{page: transactions.Page{Filter: transactions.Filter{Bank: "DBS", Type: "card", Category: "Food"}, Page: 2}}
 	h := TransactionsHandler(s)
 	for _, tc := range []struct {
 		name string
@@ -50,7 +50,7 @@ func TestTransactionsHandlerEmptyStateFullAndHTMX(t *testing.T) {
 			if tc.hx && strings.Contains(body, "<html") {
 				t.Fatalf("HTMX response was not a fragment: %s", body)
 			}
-			if s.gotFilter != (storage.TransactionFilter{Bank: "DBS", Type: "card", Category: "Food"}) || s.gotPage != 2 {
+			if s.gotFilter != (transactions.Filter{Bank: "DBS", Type: "card", Category: "Food"}) || s.gotPage != 2 {
 				t.Fatalf("store args = %+v page %d", s.gotFilter, s.gotPage)
 			}
 		})
@@ -58,7 +58,7 @@ func TestTransactionsHandlerEmptyStateFullAndHTMX(t *testing.T) {
 }
 
 func TestTransactionsHandlerFullAndHTMX(t *testing.T) {
-	s := &listStoreStub{page: storage.TransactionPage{Total: 26, Page: 2, Items: []storage.TransactionListItem{{ID: "abc", OccurredAt: time.Date(2026, 1, 2, 16, 0, 0, 0, time.UTC), Bank: "DBS", Type: "card", MerchantPayee: "Shop", MaskedSuffix: "1234", Category: "Food", Currency: "SGD", Direction: "debit", AmountMinor: 1250}}, Filter: storage.TransactionFilter{Bank: "DBS"}}}
+	s := &listStoreStub{page: transactions.Page{Total: 26, Page: 2, Items: []transactions.ListItem{{ID: "abc", OccurredAt: time.Date(2026, 1, 2, 16, 0, 0, 0, time.UTC), Bank: "DBS", Type: "card", MerchantPayee: "Shop", MaskedSuffix: "1234", Category: "Food", Currency: "SGD", Direction: "debit", AmountMinor: 1250}}, Filter: transactions.Filter{Bank: "DBS"}}}
 	h := TransactionsHandler(s)
 	r := httptest.NewRequest(http.MethodGet, "/transactions?bank=DBS&type=card&category=food&page=2", nil)
 	w := httptest.NewRecorder()

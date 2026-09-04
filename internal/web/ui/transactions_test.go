@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 )
 
 func TestTransactionsResultsEmptyState(t *testing.T) {
 	var body bytes.Buffer
-	page := storage.TransactionPage{Filter: storage.TransactionFilter{Bank: "DBS", Type: "card"}, Page: 3}
+	page := transactions.Page{Filter: transactions.Filter{Bank: "DBS", Type: "card"}, Page: 3}
 	if err := TransactionsResults(page).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestTransactionDisplayHelpers(t *testing.T) {
 	if suffix("1234") != "•••• 1234" {
 		t.Fatal("suffix masking")
 	}
-	if pageURL(storage.TransactionFilter{Bank: "DBS", Type: "card purchase"}, 2) != "/transactions?bank=DBS&page=2&type=card+purchase" {
+	if pageURL(transactions.Filter{Bank: "DBS", Type: "card purchase"}, 2) != "/transactions?bank=DBS&page=2&type=card+purchase" {
 		t.Fatal("page URL encoding")
 	}
 }

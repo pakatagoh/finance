@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 )
 
 var singapore = time.FixedZone("Singapore", 8*60*60)
@@ -33,7 +33,7 @@ func suffix(s string) string {
 	}
 	return "•••• " + s
 }
-func pageURL(f storage.TransactionFilter, page int) string {
+func pageURL(f transactions.Filter, page int) string {
 	v := url.Values{}
 	if f.Bank != "" {
 		v.Set("bank", f.Bank)
@@ -48,7 +48,7 @@ func pageURL(f storage.TransactionFilter, page int) string {
 	return "/transactions?" + v.Encode()
 }
 
-func TransactionsPage(nonce string, p storage.TransactionPage) templ.Component {
+func TransactionsPage(nonce string, p transactions.Page) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -77,7 +77,7 @@ func TransactionsPage(nonce string, p storage.TransactionPage) templ.Component {
 	})
 }
 
-func TransactionsResults(p storage.TransactionPage) templ.Component {
+func TransactionsResults(p transactions.Page) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -316,7 +316,7 @@ func TransactionsResults(p storage.TransactionPage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			for n := 1; n <= (p.Total+storage.TransactionPageSize-1)/storage.TransactionPageSize; n++ {
+			for n := 1; n <= (p.Total+transactions.PageSize-1)/transactions.PageSize; n++ {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<a class=\"join-item btn\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -361,7 +361,7 @@ func TransactionsResults(p storage.TransactionPage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if p.Page < (p.Total+storage.TransactionPageSize-1)/storage.TransactionPageSize {
+			if p.Page < (p.Total+transactions.PageSize-1)/transactions.PageSize {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<a class=\"join-item btn\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

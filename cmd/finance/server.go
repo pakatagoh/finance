@@ -15,6 +15,7 @@ import (
 	"github.com/pakatagoh/finance/internal/config"
 	"github.com/pakatagoh/finance/internal/migrations"
 	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 	"github.com/pakatagoh/finance/internal/web"
 )
 
@@ -25,6 +26,7 @@ func newHTTPServer(pool *pgxpool.Pool, logger *slog.Logger, token, origin string
 	uiMux.Handle("GET /health/ready", health)
 	uiMux.Handle("GET /health/startup", health)
 	uiStore := storage.TransactionStore{Pool: pool}
+	transactionList := transactions.NewListUseCase(storage.TransactionListRepository{Store: uiStore})
 	uiMux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	uiMux.Handle("GET /", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -33,7 +35,7 @@ func newHTTPServer(pool *pgxpool.Pool, logger *slog.Logger, token, origin string
 		}
 		http.NotFound(w, r)
 	}))
-	uiMux.Handle("GET /transactions", web.TransactionsHandler(uiStore))
+	uiMux.Handle("GET /transactions", web.TransactionsHandler(transactionList))
 	uiMux.Handle("GET /transactions/{uuid}", web.TransactionDetailHandler(uiStore))
 	uiMux.Handle("POST /transactions/{uuid}", web.TransactionDetailHandler(uiStore))
 	uiMux.Handle("PATCH /transactions/{uuid}", web.TransactionDetailHandler(uiStore))

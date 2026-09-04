@@ -39,12 +39,12 @@ func transactionListWhere(filter TransactionFilter) (string, []any) {
 		}
 	}
 	add("t.bank", filter.Bank)
-	add("t.source_type", filter.Type)
+	add("t.kind", filter.Type)
 	add("c.slug", filter.Category)
 	return strings.Join(where, " AND "), args
 }
 
-// ListTransactions returns one stable, offset-paginated page. Type filters source_type.
+// ListTransactions returns one stable, offset-paginated page. Type filters kind.
 func ListTransactions(ctx context.Context, q transactionQuerier, filter TransactionFilter, page int) (TransactionPage, error) {
 	if page < 1 {
 		page = 1

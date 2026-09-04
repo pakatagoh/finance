@@ -4,7 +4,7 @@ import "testing"
 
 func TestTransactionListWhereFiltersAndParameterOrder(t *testing.T) {
 	where, args := transactionListWhere(TransactionFilter{Bank: "DBS", Type: "card_purchase", Category: "food"})
-	want := "1=1 AND t.bank = $1 AND t.source_type = $2 AND c.slug = $3"
+	want := "1=1 AND t.bank = $1 AND t.kind = $2 AND c.slug = $3"
 	if where != want {
 		t.Fatalf("where = %q, want %q", where, want)
 	}

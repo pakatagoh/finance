@@ -50,3 +50,12 @@ func TestTransactionDisplayHelpers(t *testing.T) {
 		t.Fatal("page URL encoding")
 	}
 }
+
+func TestTransactionKindAndDirectionLabels(t *testing.T) {
+	if transactionKind("funds_transfer") != "Fund transfer" || transactionKind("paynow") != "PayNow" {
+		t.Fatal("transaction kind formatting")
+	}
+	if transactionDirection("credit") != "Credit" || transactionDirection("debit") != "Debit" {
+		t.Fatal("transaction direction formatting")
+	}
+}

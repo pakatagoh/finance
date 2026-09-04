@@ -30,6 +30,7 @@ func (r TransactionListRepository) List(ctx context.Context, filter transactions
 			OccurredAt:    item.OccurredAt,
 			Bank:          item.Bank,
 			Type:          item.Type,
+			Kind:          item.Kind,
 			MerchantPayee: item.MerchantPayee,
 			MaskedSuffix:  item.MaskedSuffix,
 			Category:      item.Category,

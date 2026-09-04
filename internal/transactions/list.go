@@ -18,6 +18,7 @@ type ListItem struct {
 	OccurredAt    time.Time
 	Bank          string
 	Type          string
+	Kind          string
 	MerchantPayee string
 	MaskedSuffix  string
 	Category      string

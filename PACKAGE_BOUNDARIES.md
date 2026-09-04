@@ -9,7 +9,8 @@ cmd/finance/          single binary and command wiring
 internal/api/         authenticated ingestion API handlers and middleware
 internal/config/      environment configuration and validation
 internal/migrations/  embedded Goose SQL migration loader
-internal/storage/     pgxpool wiring, SQL queries, and database adapters
+internal/storage/     pgxpool wiring and shared storage helpers
+internal/storage/postgres/ PostgreSQL adapters for feature interfaces
 internal/transactions/ transaction use cases, interfaces, and feature-owned types
 internal/categories/  category queries and HTTP handlers
 internal/web/         HTTP handlers, templ views, layouts, components, and middleware

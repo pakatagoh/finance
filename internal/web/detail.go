@@ -8,24 +8,13 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/pakatagoh/finance/internal/storage"
 )
 
-type DetailStore interface {
-	storage.TransactionReader
-	storage.TransactionEditor
-	ActiveCategories(context.Context) ([]storage.Category, error)
-}
-
-// normalizeNotes applies the UI's notes contract before persistence.
-func normalizeNotes(raw string) (string, error) {
-	value := strings.TrimSpace(raw)
-	if utf8.RuneCountInString(value) > 2000 {
-		return "", fmt.Errorf("notes must be 2,000 characters or fewer")
-	}
-	return value, nil
+type detailUseCase interface {
+	Load(context.Context, string) (storage.Transaction, []storage.Category, error)
+	Save(context.Context, string, string, string) (storage.Transaction, error)
 }
 
 type detailPage struct {
@@ -91,43 +80,17 @@ func renderDetailError(w http.ResponseWriter, status int, msg string, page detai
 	_ = detailTemplate.Execute(w, page)
 }
 
-func updateDetail(r *http.Request, store DetailStore, id string) (storage.Transaction, string, error) {
-	tx, err := store.GetTransaction(r.Context(), id)
-	if err != nil {
-		return tx, backURL(r.URL.Query().Get("return_to")), err
-	}
+func updateDetail(r *http.Request, store detailUseCase, id string) (storage.Transaction, string, error) {
+	back := backURL(r.URL.Query().Get("return_to"))
 	if err := r.ParseForm(); err != nil {
-		return tx, backURL(r.URL.Query().Get("return_to")), fmt.Errorf("%w: %v", errInvalidDetailForm, err)
+		return storage.Transaction{}, back, fmt.Errorf("%w: %v", errInvalidDetailForm, err)
 	}
-	back := backURL(r.FormValue("return_to"))
-	category := strings.TrimSpace(r.FormValue("category_id"))
-	var categoryPtr *string
-	if category != "" {
-		categoryPtr = &category
-	}
-	submittedNotes := strings.TrimSpace(r.FormValue("notes"))
-	if submittedNotes != "" {
-		tx.Notes = &submittedNotes
-	} else {
-		tx.Notes = nil
-	}
-	tx.CategoryID = categoryPtr
-	notes, err := normalizeNotes(submittedNotes)
-	if err != nil {
-		return tx, back, err
-	}
-	var notesPtr *string
-	if notes != "" {
-		notesPtr = &notes
-	}
-	saved, err := store.UpdateEnrichment(r.Context(), id, categoryPtr, notesPtr)
-	if err != nil {
-		return tx, back, err
-	}
-	return saved, back, nil
+	back = backURL(r.FormValue("return_to"))
+	tx, err := store.Save(r.Context(), id, r.FormValue("category_id"), r.FormValue("notes"))
+	return tx, back, err
 }
 
-func TransactionDetailHandler(store DetailStore) http.Handler {
+func TransactionDetailHandler(store detailUseCase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := transactionID(r)
 		if id == "" {
@@ -142,7 +105,7 @@ func TransactionDetailHandler(store DetailStore) http.Handler {
 		if r.Method == http.MethodPost || r.Method == http.MethodPatch {
 			tx, back, err := updateDetail(r, store, id)
 			if err != nil {
-				page := detailPage{Transaction: tx, Categories: categories(r, store), Back: back}
+				page := detailPage{Transaction: tx, Categories: categories(r, store, id), Back: back}
 				if errors.Is(err, errInvalidDetailForm) {
 					renderDetailError(w, http.StatusBadRequest, "Invalid form", page)
 				} else if strings.Contains(err.Error(), "notes must be") {
@@ -157,13 +120,14 @@ func TransactionDetailHandler(store DetailStore) http.Handler {
 				return
 			}
 			if r.Method == http.MethodPatch {
-				renderDetail(w, detailPage{Transaction: tx, Categories: categories(r, store), Back: back, Success: "Transaction saved."})
+				_, cats, _ := store.Load(r.Context(), id)
+				renderDetail(w, detailPage{Transaction: tx, Categories: cats, Back: back, Success: "Transaction saved."})
 				return
 			}
 			http.Redirect(w, r, detailURL(id, back), http.StatusSeeOther)
 			return
 		}
-		tx, err := store.GetTransaction(r.Context(), id)
+		tx, cats, err := store.Load(r.Context(), id)
 		if errors.Is(err, storage.ErrTransactionNotFound) {
 			http.NotFound(w, r)
 			return
@@ -172,17 +136,12 @@ func TransactionDetailHandler(store DetailStore) http.Handler {
 			http.Error(w, "Unable to load transaction", 500)
 			return
 		}
-		cats, err := store.ActiveCategories(r.Context())
-		if err != nil {
-			http.Error(w, "Unable to load categories", 500)
-			return
-		}
 		renderDetail(w, detailPage{Transaction: tx, Categories: cats, Back: back})
 	})
 }
 
-func categories(r *http.Request, store DetailStore) []storage.Category {
-	c, _ := store.ActiveCategories(r.Context())
+func categories(r *http.Request, store detailUseCase, id string) []storage.Category {
+	_, c, _ := store.Load(r.Context(), id)
 	return c
 }
 func renderDetail(w http.ResponseWriter, p detailPage) {

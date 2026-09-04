@@ -1,19 +1,20 @@
-package storage
+package postgres
 
 import (
 	"context"
 
+	"github.com/pakatagoh/finance/internal/storage"
 	"github.com/pakatagoh/finance/internal/transactions"
 )
 
-// TransactionListRepository adapts the storage query module to the
+// TransactionListRepository adapts the PostgreSQL storage query to the
 // transactions feature's repository interface.
 type TransactionListRepository struct {
-	Store TransactionStore
+	Store storage.TransactionStore
 }
 
 func (r TransactionListRepository) List(ctx context.Context, filter transactions.Filter, page int) (transactions.Page, error) {
-	stored, err := r.Store.ListTransactions(ctx, TransactionFilter{
+	stored, err := r.Store.ListTransactions(ctx, storage.TransactionFilter{
 		Bank:     filter.Bank,
 		Type:     filter.Type,
 		Category: filter.Category,

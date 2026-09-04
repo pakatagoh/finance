@@ -9,6 +9,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pakatagoh/finance/internal/storage"
+	"github.com/pakatagoh/finance/internal/transactions"
 )
 
 func parseHTML(t *testing.T, body string) *goquery.Document {
@@ -18,24 +19,6 @@ func parseHTML(t *testing.T, body string) *goquery.Document {
 		t.Fatalf("parse response HTML: %v", err)
 	}
 	return doc
-}
-
-func TestNormalizeNotes(t *testing.T) {
-	got, err := normalizeNotes("  hello\n\nworld  ")
-	if err != nil || got != "hello\n\nworld" {
-		t.Fatalf("normalizeNotes = %q, %v", got, err)
-	}
-	got, err = normalizeNotes(strings.Repeat("界", 2000))
-	if err != nil || len([]rune(got)) != 2000 {
-		t.Fatalf("unicode notes rejected: %v", err)
-	}
-	if _, err = normalizeNotes(strings.Repeat("x", 2001)); err == nil {
-		t.Fatal("expected length error")
-	}
-	got, err = normalizeNotes(" \n\t")
-	if err != nil || got != "" {
-		t.Fatalf("blank = %q, %v", got, err)
-	}
 }
 
 func TestBackURLRejectsExternal(t *testing.T) {
@@ -81,7 +64,7 @@ func TestDetailSaveUsesPRGWithoutHTMX(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/transactions/abc", strings.NewReader("category_id=cat&notes=hello&return_to=%2Ftransactions%3Fpage%3D2"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("PRG status = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
@@ -96,7 +79,7 @@ func TestDetailSaveSwapsWithHTMX(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	doc := parseHTML(t, rec.Body.String())
 	form := doc.Find("main#transaction-detail form")
 	if rec.Code != http.StatusOK || doc.Find("main#transaction-detail").Length() != 1 || form.Length() != 1 || form.AttrOr("hx-method", "") != "patch" || form.AttrOr("hx-action", "") != "/transactions/abc" {
@@ -109,7 +92,7 @@ func TestDetailPatchRejectsNonHTMX(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPatch, "/transactions/abc", strings.NewReader("notes=hello"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest || f.updated {
 		t.Fatalf("non-HTMX PATCH: status=%d updated=%v", rec.Code, f.updated)
 	}
@@ -121,7 +104,7 @@ func TestDetailHTMXErrorKeepsFormAndShowsMessage(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	body := rec.Body.String()
 	doc := parseHTML(t, body)
 	if rec.Code != http.StatusUnprocessableEntity || doc.Find("main#transaction-detail").Length() != 1 || !strings.Contains(doc.Find("p[role=alert]").Text(), "notes must be 2,000 characters or fewer") || doc.Find("textarea[name=notes]").Length() != 1 || doc.Find("button[type=submit]").Length() != 1 || f.updated {
@@ -135,7 +118,7 @@ func TestDetailHTMXInvalidCategoryPreservesSubmittedValue(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	body := rec.Body.String()
 	doc := parseHTML(t, body)
 	selected := doc.Find(`select[name=category_id] option[value="removed"]`)
@@ -151,7 +134,7 @@ func TestDetailSaveEscapesNotesAndPreservesBack(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
-	TransactionDetailHandler(f).ServeHTTP(rec, req)
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !f.updated || f.notes == nil || *f.notes != "<script>bad</script>" {
 		t.Fatalf("save: code=%d updated=%v notes=%v", rec.Code, f.updated, f.notes)
 	}

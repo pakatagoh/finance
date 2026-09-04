@@ -12,6 +12,8 @@ import (
 var singapore = time.FixedZone("Singapore", 8*60*60)
 func singaporeTime(t time.Time) string { return t.In(singapore).Format("02 Jan 2006 15:04") }
 func signedAmount(minor int64, currency, direction string) string { sign := "-"; if direction == "credit" { sign = "+" }; return fmt.Sprintf("%s%s %.2f", sign, currency, float64(minor)/100) }
+func transactionKind(kind string) string { switch kind { case "card_purchase": return "Card purchase"; case "paynow": return "PayNow"; case "funds_transfer": return "Fund transfer"; case "incoming_transfer": return "Incoming transfer"; case "reversal": return "Reversal"; default: return kind } }
+func transactionDirection(direction string) string { if direction == "credit" { return "Credit" }; if direction == "debit" { return "Debit" }; return direction }
 func suffix(s string) string { if s == "" { return "—" }; return "•••• " + s }
 func pageURL(f transactions.Filter, page int) string { v:=url.Values{}; if f.Bank!=""{v.Set("bank",f.Bank)};if f.Type!=""{v.Set("type",f.Type)};if f.Category!=""{v.Set("category",f.Category)};v.Set("page",strconv.Itoa(page));return "/transactions?"+v.Encode() }
 
@@ -31,9 +33,9 @@ templ TransactionsResults(p transactions.Page) {
   if len(p.Items) == 0 {
     <div class="card bg-base-100 shadow-sm"><div class="card-body"><h2 class="card-title">No transactions yet</h2><p>New transactions will appear here after they are received from the bank tracker.</p></div></div>
   } else {
-    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Date (SGT)</th><th>Bank</th><th>Type</th><th>Merchant / Payee</th><th>Account</th><th>Category</th><th>Amount</th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Date (SGT)</th><th>Bank</th><th>Type</th><th>Direction</th><th>Merchant / Payee</th><th>Account</th><th>Category</th><th>Amount</th></tr></thead><tbody>
     for _, item := range p.Items {
-      <tr><td>{ singaporeTime(item.OccurredAt) }</td><td>{ item.Bank }</td><td>{ item.Type }</td><td><a class="link" href={ templ.URL("/transactions/"+item.ID) }>{ item.MerchantPayee }</a></td><td>{ suffix(item.MaskedSuffix) }</td><td>{ item.Category }</td><td class="text-right">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td></tr>
+      <tr><td>{ singaporeTime(item.OccurredAt) }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td>{ transactionDirection(item.Direction) }</td><td><a class="link" href={ templ.URL("/transactions/"+item.ID) }>{ item.MerchantPayee }</a></td><td>{ suffix(item.MaskedSuffix) }</td><td>{ item.Category }</td><td class="text-right">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td></tr>
     }
     </tbody></table></div>
   }

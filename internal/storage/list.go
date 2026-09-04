@@ -13,10 +13,10 @@ const TransactionPageSize = 25
 
 type TransactionFilter struct{ Bank, Type, Category string }
 type TransactionListItem struct {
-	ID                                                                     string
-	OccurredAt                                                             time.Time
-	Bank, Type, MerchantPayee, MaskedSuffix, Category, Currency, Direction string
-	AmountMinor                                                            int64
+	ID                                                                           string
+	OccurredAt                                                                   time.Time
+	Bank, Type, Kind, MerchantPayee, MaskedSuffix, Category, Currency, Direction string
+	AmountMinor                                                                  int64
 }
 type TransactionPage struct {
 	Items       []TransactionListItem
@@ -39,12 +39,12 @@ func transactionListWhere(filter TransactionFilter) (string, []any) {
 		}
 	}
 	add("t.bank", filter.Bank)
-	add("t.source_type", filter.Type)
+	add("t.kind", filter.Type)
 	add("c.slug", filter.Category)
 	return strings.Join(where, " AND "), args
 }
 
-// ListTransactions returns one stable, offset-paginated page. Type filters source_type.
+// ListTransactions returns one stable, offset-paginated page. Type filters kind.
 func ListTransactions(ctx context.Context, q transactionQuerier, filter TransactionFilter, page int) (TransactionPage, error) {
 	if page < 1 {
 		page = 1
@@ -55,7 +55,7 @@ func ListTransactions(ctx context.Context, q transactionQuerier, filter Transact
 		return TransactionPage{}, err
 	}
 	offset := (page - 1) * TransactionPageSize
-	rows, err := q.Query(ctx, `SELECT t.id, t.occurred_at, t.bank, t.source_type,
+	rows, err := q.Query(ctx, `SELECT t.id, t.occurred_at, t.bank, t.source_type, t.kind,
 		COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''), '—'),
 		COALESCE(t.card_suffix, t.from_account_suffix, ''), COALESCE(c.name, 'Uncategorised'),
 		t.currency, t.direction, t.amount_minor
@@ -68,7 +68,7 @@ func ListTransactions(ctx context.Context, q transactionQuerier, filter Transact
 	out := TransactionPage{Total: total, Page: page, Filter: filter}
 	for rows.Next() {
 		var item TransactionListItem
-		if err := rows.Scan(&item.ID, &item.OccurredAt, &item.Bank, &item.Type, &item.MerchantPayee, &item.MaskedSuffix, &item.Category, &item.Currency, &item.Direction, &item.AmountMinor); err != nil {
+		if err := rows.Scan(&item.ID, &item.OccurredAt, &item.Bank, &item.Type, &item.Kind, &item.MerchantPayee, &item.MaskedSuffix, &item.Category, &item.Currency, &item.Direction, &item.AmountMinor); err != nil {
 			return TransactionPage{}, err
 		}
 		out.Items = append(out.Items, item)

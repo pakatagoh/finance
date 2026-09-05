@@ -10,7 +10,7 @@ import (
 )
 
 var singapore = time.FixedZone("Singapore", 8*60*60)
-func singaporeTime(t time.Time) string { return t.In(singapore).Format("02 Jan 2006 15:04") }
+func singaporeTime(t time.Time) string { return t.In(singapore).Format("02 January 2006 15:04") }
 func signedAmount(minor int64, currency, direction string) string { sign := "-"; if direction == "credit" { sign = "+" }; return fmt.Sprintf("%s%s %.2f", sign, currency, float64(minor)/100) }
 func transactionKind(kind string) string { switch kind { case "credit_card": return "Credit card"; case "debit_card": return "Debit card"; case "paynow": return "PayNow"; case "funds_transfer": return "Fund transfer"; case "incoming_transfer": return "Incoming transfer"; case "reversal": return "Reversal"; default: return kind } }
 func suffix(s string) string { if s == "" { return "—" }; return "•••• " + s }
@@ -21,35 +21,41 @@ templ TransactionsPage(nonce string, p transactions.Page) {
 }
 
 templ TransactionsResults(p transactions.Page) {
-<section id="transaction-results" hx-history-elt>
-  <div class="flex justify-between items-center mb-4"><h1 class="text-2xl font-bold">Transactions</h1><p>{ fmt.Sprintf("%d total", p.Total) }</p></div>
-  <form method="get" action="/transactions" class="flex gap-2 mb-4" hx-get="/transactions" hx-target="#transaction-results" hx-push-url="true">
-    <input name="bank" value={ p.Filter.Bank } placeholder="Bank" class="input input-bordered"/>
-    <input name="type" value={ p.Filter.Type } placeholder="Type" class="input input-bordered"/>
-    <input name="category" value={ p.Filter.Category } placeholder="Category" class="input input-bordered"/>
-    <button class="btn btn-primary" type="submit">Filter</button>
+<section id="transaction-results" class="space-y-6" hx-history-elt>
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h1 class="text-3xl font-bold tracking-tight">Transactions</h1><p class="mt-1 text-base-content/70">Review and categorise your recent activity.</p></div><p class="text-sm font-medium text-base-content/60">{ fmt.Sprintf("%d total", p.Total) }</p></div>
+  <form method="get" action="/transactions" class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm" hx-get="/transactions" hx-target="#transaction-results" hx-push-url="true">
+    <div class="grid gap-4 sm:grid-cols-3"><div class="form-control"><label class="label" for="filter-bank"><span class="label-text font-medium">Bank</span></label><input id="filter-bank" name="bank" value={ p.Filter.Bank } placeholder="Any bank" class="input input-bordered w-full"/></div><div class="form-control"><label class="label" for="filter-type"><span class="label-text font-medium">Type</span></label><input id="filter-type" name="type" value={ p.Filter.Type } placeholder="Any type" class="input input-bordered w-full"/></div><div class="form-control"><label class="label" for="filter-category"><span class="label-text font-medium">Category</span></label><input id="filter-category" name="category" value={ p.Filter.Category } placeholder="Any category" class="input input-bordered w-full"/></div></div>
+    <div class="mt-4 flex justify-end"><button class="btn btn-primary" type="submit">Apply filters</button></div>
   </form>
   if len(p.Items) == 0 {
-    <div class="card bg-base-100 shadow-sm"><div class="card-body"><h2 class="card-title">No transactions yet</h2><p>New transactions will appear here after they are received from the bank tracker.</p></div></div>
-  } else {
-    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Date (SGT)</th><th>Amount</th><th>Merchant / Payee</th><th>Category</th><th>Bank</th><th>Type</th><th>Account</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
-    for _, item := range p.Items {
-      <tr><td>{ singaporeTime(item.OccurredAt) }</td><td class="text-right">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td><td>{ item.MerchantPayee }</td><td>{ item.Category }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td>{ suffix(item.MaskedSuffix) }</td><td><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/"+item.ID) }>View</a></td></tr>
+    if p.Filter.Bank != "" || p.Filter.Type != "" || p.Filter.Category != "" {
+      <section class="rounded-box border border-dashed border-base-300 bg-base-100 px-6 py-12 text-center"><h2 class="text-lg font-semibold">No matching transactions</h2><p class="mx-auto mt-2 max-w-prose text-base-content/70">Try adjusting your filters to see more transactions.</p></section>
+    } else {
+      <section class="rounded-box border border-dashed border-base-300 bg-base-100 px-6 py-12 text-center"><h2 class="text-lg font-semibold">No transactions yet</h2><p class="mx-auto mt-2 max-w-prose text-base-content/70">New transactions will appear here after they are received from the bank tracker.</p></section>
     }
-    </tbody></table></div>
+  } else {
+    <div class="rounded-box border border-base-300 bg-base-100 shadow-sm"><div class="overflow-x-auto"><table class="table"><thead><tr class="bg-base-200/60"><th scope="col">Date (SGT)</th><th scope="col" class="text-right">Amount</th><th scope="col">Merchant / Payee</th><th scope="col">Category</th><th scope="col">Bank</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+    for _, item := range p.Items {
+      <tr class="hover"><td class="whitespace-nowrap text-sm">{ singaporeTime(item.OccurredAt) }</td><td class="whitespace-nowrap text-right font-semibold tabular-nums">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td><td class="font-medium">{ item.MerchantPayee }</td><td>{ item.Category }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td class="whitespace-nowrap">{ suffix(item.MaskedSuffix) }</td><td><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/"+item.ID) }>View</a></td></tr>
+    }
+    </tbody></table></div></div>
   }
   if p.Total > 0 {
-    <nav class="join mt-4" aria-label="Pagination">
+    <nav class="flex justify-center sm:justify-end" aria-label="Pagination"><div class="join">
     if p.Page > 1 {
-      <a class="join-item btn" href={ templ.URL(pageURL(p.Filter,p.Page-1)) } hx-get={ pageURL(p.Filter,p.Page-1) } hx-target="#transaction-results" hx-push-url="true">Previous</a>
+      <a class="join-item btn btn-outline" href={ templ.URL(pageURL(p.Filter,p.Page-1)) } hx-get={ pageURL(p.Filter,p.Page-1) } hx-target="#transaction-results" hx-push-url="true">Previous</a>
     }
     for n := 1; n <= (p.Total+transactions.PageSize-1)/transactions.PageSize; n++ {
-      <a class="join-item btn" href={ templ.URL(pageURL(p.Filter,n)) } hx-get={ pageURL(p.Filter,n) } hx-target="#transaction-results" hx-push-url="true">{ strconv.Itoa(n) }</a>
+      if n == p.Page {
+        <a class="join-item btn btn-primary" aria-current="page" href={ templ.URL(pageURL(p.Filter,n)) } hx-get={ pageURL(p.Filter,n) } hx-target="#transaction-results" hx-push-url="true">{ strconv.Itoa(n) }</a>
+      } else {
+        <a class="join-item btn btn-outline" href={ templ.URL(pageURL(p.Filter,n)) } hx-get={ pageURL(p.Filter,n) } hx-target="#transaction-results" hx-push-url="true">{ strconv.Itoa(n) }</a>
+      }
     }
     if p.Page < (p.Total+transactions.PageSize-1)/transactions.PageSize {
-      <a class="join-item btn" href={ templ.URL(pageURL(p.Filter,p.Page+1)) } hx-get={ pageURL(p.Filter,p.Page+1) } hx-target="#transaction-results" hx-push-url="true">Next</a>
+      <a class="join-item btn btn-outline" href={ templ.URL(pageURL(p.Filter,p.Page+1)) } hx-get={ pageURL(p.Filter,p.Page+1) } hx-target="#transaction-results" hx-push-url="true">Next</a>
     }
-    </nav>
+    </div></nav>
   }
 </section>
 }

@@ -41,7 +41,7 @@ func TestTransactionsHandlerEmptyStateFullAndHTMX(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
 			body := w.Body.String()
-			if w.Code != http.StatusOK || !strings.Contains(body, "No transactions yet") || !strings.Contains(body, "New transactions will appear here after they are received from the bank tracker.") {
+			if w.Code != http.StatusOK || !strings.Contains(body, "No matching transactions") || !strings.Contains(body, "Try adjusting your filters to see more transactions.") {
 				t.Fatalf("empty response: code=%d body=%s", w.Code, body)
 			}
 			if strings.Contains(body, "No transactions found.") || strings.Contains(body, "<tr>") || strings.Contains(body, "Import") {
@@ -64,7 +64,7 @@ func TestTransactionsHandlerFullAndHTMX(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	body := w.Body.String()
-	if w.Code != 200 || !strings.Contains(body, "03 Jan 2026 00:00") || !strings.Contains(body, "-SGD 12.50") || !strings.Contains(body, "page=1") {
+	if w.Code != 200 || !strings.Contains(body, "03 January 2026 00:00") || !strings.Contains(body, "-SGD 12.50") || !strings.Contains(body, "page=1") {
 		t.Fatalf("full response missing expected content: code=%d body=%s", w.Code, body)
 	}
 	if s.gotFilter.Bank != "DBS" || s.gotFilter.Type != "card" || s.gotPage != 2 {

@@ -18,8 +18,8 @@ func TestTransactionsResultsEmptyState(t *testing.T) {
 	}
 	got := body.String()
 	for _, want := range []string{
-		"No transactions yet",
-		"New transactions will appear here after they are received from the bank tracker.",
+		"No matching transactions",
+		"Try adjusting your filters to see more transactions.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("empty state missing %q in %s", want, got)
@@ -37,7 +37,7 @@ func TestTransactionsResultsEmptyState(t *testing.T) {
 
 func TestTransactionDisplayHelpers(t *testing.T) {
 	got := singaporeTime(time.Date(2026, 1, 2, 16, 0, 0, 0, time.UTC))
-	if got != "03 Jan 2026 00:00" {
+	if got != "03 January 2026 00:00" {
 		t.Fatalf("Singapore time = %q", got)
 	}
 	if signedAmount(1234, "SGD", "debit") != "-SGD 12.34" || signedAmount(1234, "SGD", "credit") != "+SGD 12.34" {

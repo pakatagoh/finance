@@ -31,8 +31,6 @@ var detailTemplate = template.Must(template.New("transaction-detail").Funcs(temp
 	"selected": func(id string, current *string) bool { return current != nil && *current == id },
 	"kindLabel": func(kind string) string {
 		switch kind {
-		case "card_purchase":
-			return "Card purchase"
 		case "credit_card":
 			return "Credit card"
 		case "debit_card":

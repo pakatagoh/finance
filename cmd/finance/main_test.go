@@ -50,7 +50,7 @@ func TestTransactionPatchRouteIsRegisteredAndHTMXGated(t *testing.T) {
 }
 
 func TestEmbeddedMigrationsAreAvailable(t *testing.T) {
-	for _, name := range []string{"00001_categories.sql", "00002_transactions.sql", "00003_seed_runs.sql", "00004_card_type.sql"} {
+	for _, name := range []string{"00001_categories.sql", "00002_transactions.sql", "00003_seed_runs.sql", "00004_card_type.sql", "00005_allow_card_kinds.sql", "00006_remove_card_purchase.sql"} {
 		if _, err := migrations.FS.Open(name); err != nil {
 			t.Fatalf("embedded migration %q: %v", name, err)
 		}

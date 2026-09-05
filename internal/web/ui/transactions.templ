@@ -12,7 +12,7 @@ import (
 var singapore = time.FixedZone("Singapore", 8*60*60)
 func singaporeTime(t time.Time) string { return t.In(singapore).Format("02 Jan 2006 15:04") }
 func signedAmount(minor int64, currency, direction string) string { sign := "-"; if direction == "credit" { sign = "+" }; return fmt.Sprintf("%s%s %.2f", sign, currency, float64(minor)/100) }
-func transactionKind(kind string) string { switch kind { case "card_purchase": return "Card purchase"; case "credit_card": return "Credit card"; case "debit_card": return "Debit card"; case "paynow": return "PayNow"; case "funds_transfer": return "Fund transfer"; case "incoming_transfer": return "Incoming transfer"; case "reversal": return "Reversal"; default: return kind } }
+func transactionKind(kind string) string { switch kind { case "credit_card": return "Credit card"; case "debit_card": return "Debit card"; case "paynow": return "PayNow"; case "funds_transfer": return "Fund transfer"; case "incoming_transfer": return "Incoming transfer"; case "reversal": return "Reversal"; default: return kind } }
 func suffix(s string) string { if s == "" { return "—" }; return "•••• " + s }
 func pageURL(f transactions.Filter, page int) string { v:=url.Values{}; if f.Bank!=""{v.Set("bank",f.Bank)};if f.Type!=""{v.Set("type",f.Type)};if f.Category!=""{v.Set("category",f.Category)};v.Set("page",strconv.Itoa(page));return "/transactions?"+v.Encode() }
 

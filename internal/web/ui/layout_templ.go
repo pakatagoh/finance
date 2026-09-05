@@ -42,7 +42,7 @@ func Shell(title string, nonce string, body templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " · Finance</title><link rel=\"stylesheet\" href=\"/static/css/app.css\"></head><body><header class=\"navbar border-b border-base-300 bg-base-100\"><div class=\"container mx-auto px-4\"><a class=\"btn btn-ghost px-0 text-xl font-bold\" href=\"/\">Finance</a></div></header><main class=\"container mx-auto max-w-6xl px-4 py-8\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " · Finance</title><link rel=\"stylesheet\" href=\"/static/css/app.css\"></head><body><header class=\"navbar border-b border-base-300 bg-base-100\"><div class=\"container mx-auto px-4\"><a class=\"btn btn-ghost px-0 text-xl font-bold\" href=\"/\">Finance</a></div></header><div class=\"container mx-auto max-w-6xl px-4 py-8\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -50,7 +50,7 @@ func Shell(title string, nonce string, body templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main><script nonce=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><script nonce=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

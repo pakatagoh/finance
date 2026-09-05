@@ -1,0 +1,93 @@
+package ui
+
+import (
+    "fmt"
+    "net/url"
+    "time"
+
+    "github.com/pakatagoh/finance/internal/storage"
+)
+
+var detailSingapore = time.FixedZone("Singapore", 8*60*60)
+
+func detailDate(value time.Time) string {
+    return value.In(detailSingapore).Format("02 January 2006 15:04")
+}
+
+func detailAmount(minor int64, currency, direction string) string {
+    sign := "-"
+    if direction == "credit" {
+        sign = "+"
+    }
+    return fmt.Sprintf("%s%s %.2f", sign, currency, float64(minor)/100)
+}
+
+func detailKindLabel(kind string) string {
+    switch kind {
+    case "credit_card":
+        return "Credit card"
+    case "debit_card":
+        return "Debit card"
+    case "paynow":
+        return "PayNow"
+    case "funds_transfer":
+        return "Fund transfer"
+    case "incoming_transfer":
+        return "Incoming transfer"
+    case "reversal":
+        return "Reversal"
+    default:
+        return kind
+    }
+}
+
+func detailSelected(id string, current *string) bool {
+    return current != nil && *current == id
+}
+
+templ TransactionDetailPage(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success string) {
+    @Shell("Transaction detail", nonce, TransactionDetail(nonce, tx, categories, back, errorMessage, success))
+}
+
+templ TransactionDetail(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success string) {
+<main id="transaction-detail" class="container mx-auto max-w-4xl space-y-6 px-4 py-8">
+<div class="space-y-2"><h1 class="text-3xl font-bold tracking-tight">Transaction detail</h1><p class="text-base-content/70">Review the transaction and update its category or notes.</p></div>
+if success != "" {
+<div class="alert alert-success" role="status" aria-live="polite"><span>{ success }</span></div>
+}
+if errorMessage != "" {
+<div class="alert alert-error" role="alert" aria-live="assertive"><span>{ errorMessage }</span></div>
+}
+<section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-summary-heading">
+<div class="flex flex-col gap-3 border-b border-base-300 px-6 py-5 sm:flex-row sm:items-start sm:justify-between"><div><h2 id="transaction-summary-heading" class="text-lg font-semibold">Summary</h2><p class="text-sm text-base-content/60">{ tx.SourceType }</p></div><p class="text-2xl font-bold tabular-nums sm:text-right">{ detailAmount(tx.AmountMinor, tx.Currency, tx.Direction) }</p></div>
+<dl class="grid gap-x-8 gap-y-5 px-6 py-6 sm:grid-cols-2"><div><dt class="text-sm text-base-content/60">Date (SGT)</dt><dd class="mt-1 font-medium">{ detailDate(tx.OccurredAt) }</dd></div><div><dt class="text-sm text-base-content/60">Bank</dt><dd class="mt-1 font-medium">{ tx.Bank }</dd></div><div><dt class="text-sm text-base-content/60">Type</dt><dd class="mt-1 font-medium">{ detailKindLabel(tx.Kind) }</dd></div><div class="sm:col-span-2"><dt class="text-sm text-base-content/60">Merchant</dt><dd class="mt-1 font-medium">
+if tx.Merchant != nil {
+{ *tx.Merchant }
+} else {
+—
+}
+</dd></div></dl>
+</section>
+<section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-edit-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="transaction-edit-heading" class="text-lg font-semibold">Categorise transaction</h2><p class="text-sm text-base-content/60">Add context to make this transaction easier to find later.</p></div>
+<form class="space-y-5 px-6 py-6" method="post" action={ "/transactions/" + url.PathEscape(tx.ID) } hx-action={ "/transactions/" + url.PathEscape(tx.ID) } hx-method="patch" hx-nonce={ nonce } hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">
+<input type="hidden" name="return_to" value={ back }/>
+<div class="form-control"><label class="label" for="category"><span class="label-text font-medium">Category</span></label><select class="select select-bordered w-full" id="category" name="category_id"><option value="">No category</option>
+if errorMessage != "" && tx.CategoryID != nil {
+<option value={ *tx.CategoryID } selected>Submitted category</option>
+}
+for _, category := range categories {
+if detailSelected(category.ID, tx.CategoryID) {
+<option value={ category.ID } selected>{ category.Name }</option>
+} else {
+<option value={ category.ID }>{ category.Name }</option>
+}
+}
+</select></div>
+<div class="form-control"><label class="label" for="notes"><span class="label-text font-medium">Notes</span></label><textarea class="textarea textarea-bordered min-h-32 w-full" id="notes" name="notes" maxlength="2000" rows="6" placeholder="Add a note about this transaction">
+if tx.Notes != nil {
+{ *tx.Notes }
+}
+</textarea><div class="label"><span class="label-text-alt text-base-content/60">Optional · up to 2,000 characters</span></div></div>
+<div class="flex justify-end border-t border-base-300 pt-5"><button class="btn btn-primary min-w-24" type="submit">Save changes</button></div></form></section>
+</main>
+}

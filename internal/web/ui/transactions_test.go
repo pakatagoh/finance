@@ -13,7 +13,7 @@ import (
 func TestTransactionsResultsEmptyState(t *testing.T) {
 	var body bytes.Buffer
 	page := transactions.Page{Filter: transactions.Filter{Bank: "DBS", Type: "card"}, Page: 3}
-	if err := TransactionsResults(page).Render(context.Background(), &body); err != nil {
+	if err := TransactionsResults("test-nonce", page).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
 	got := body.String()

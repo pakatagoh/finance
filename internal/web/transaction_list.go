@@ -28,7 +28,7 @@ func TransactionsHandler(store transactionListQuerier) http.Handler {
 		}
 		var component templ.Component = ui.TransactionsPage(CSPNonce(r.Context()), p)
 		if r.Header.Get("HX-Request") == "true" {
-			component = ui.TransactionsResults(p)
+			component = ui.TransactionsResults(CSPNonce(r.Context()), p)
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := component.Render(r.Context(), w); err != nil {

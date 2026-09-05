@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,15 @@ func parseHTML(t *testing.T, body string) *goquery.Document {
 		t.Fatalf("parse response HTML: %v", err)
 	}
 	return doc
+}
+
+func responseNonce(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	match := regexp.MustCompile(`nonce-([^']+)`).FindStringSubmatch(rec.Header().Get("Content-Security-Policy"))
+	if len(match) != 2 || match[1] == "" {
+		t.Fatalf("response CSP nonce missing: %q", rec.Header().Get("Content-Security-Policy"))
+	}
+	return match[1]
 }
 
 func TestBackURLRejectsExternal(t *testing.T) {
@@ -71,6 +81,31 @@ func TestDetailSaveUsesPRGWithoutHTMX(t *testing.T) {
 	}
 	if got := rec.Header().Get("Location"); got != "/transactions/abc?return_to=%2Ftransactions%3Fpage%3D2" {
 		t.Fatalf("PRG location = %q", got)
+	}
+}
+
+func TestDetailPageCarriesCSPNonceIntoScriptsAndHTMXForm(t *testing.T) {
+	f := &detailFake{tx: storage.Transaction{ID: "abc", Bank: "Bank"}}
+	rec := httptest.NewRecorder()
+	ContentSecurityPolicy(TransactionDetailHandler(transactions.NewDetailUseCase(f))).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/transactions/abc", nil))
+	nonce := responseNonce(t, rec)
+	doc := parseHTML(t, rec.Body.String())
+	if doc.Find(`script[nonce="`+nonce+`"]`).Length() != 3 || doc.Find(`form[hx-nonce="`+nonce+`"]`).Length() != 1 {
+		t.Fatalf("detail nonce propagation failed: nonce=%q body=%s", nonce, rec.Body.String())
+	}
+}
+
+func TestDetailHTMXResponseCarriesFreshNonce(t *testing.T) {
+	f := &detailFake{tx: storage.Transaction{ID: "abc", Bank: "Bank"}, cats: []storage.Category{{ID: "cat", Name: "Food"}}}
+	req := httptest.NewRequest(http.MethodPatch, "/transactions/abc", strings.NewReader("category_id=cat&notes=hello"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+	ContentSecurityPolicy(TransactionDetailHandler(transactions.NewDetailUseCase(f))).ServeHTTP(rec, req)
+	nonce := responseNonce(t, rec)
+	doc := parseHTML(t, rec.Body.String())
+	if doc.Find(`form[hx-nonce="`+nonce+`"]`).Length() != 1 {
+		t.Fatalf("HTMX response nonce propagation failed: nonce=%q body=%s", nonce, rec.Body.String())
 	}
 }
 

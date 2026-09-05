@@ -57,6 +57,12 @@ func TestEmbeddedMigrationsAreAvailable(t *testing.T) {
 	}
 }
 
+func TestLatestMigrationVersionMatchesEmbeddedMigrations(t *testing.T) {
+	if migrations.LatestVersion != 6 {
+		t.Fatalf("LatestVersion = %d, want 6", migrations.LatestVersion)
+	}
+}
+
 func TestMigrateCommandReportsConfigurationErrors(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 	var out, errOut bytes.Buffer

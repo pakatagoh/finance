@@ -10,4 +10,4 @@ import "embed"
 var FS embed.FS
 
 // LatestVersion is the highest embedded Goose migration version.
-const LatestVersion int64 = 3
+const LatestVersion int64 = 6

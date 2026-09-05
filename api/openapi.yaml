@@ -65,6 +65,7 @@ paths:
                   bank: dbs
                   source_type: email
                   kind: card_purchase
+                  card_type: credit_card
                   direction: debit
                   currency: SGD
                   amount_minor: 1250
@@ -163,6 +164,15 @@ components:
       enum:
         - debit
         - credit
+    CardType:
+      type:
+        - string
+        - 'null'
+      description: Card type; required for card purchases and null for other transaction kinds.
+      enum:
+        - credit_card
+        - debit_card
+        - null
     CreateTransactionRequest:
       type: object
       description: |
@@ -179,6 +189,7 @@ components:
         - bank
         - source_type
         - kind
+        - card_type
         - direction
         - currency
         - amount_minor
@@ -208,6 +219,8 @@ components:
           description: Source channel type (e.g. `email`).
         kind:
           $ref: '#/components/schemas/TransactionKind'
+        card_type:
+          $ref: '#/components/schemas/CardType'
         direction:
           $ref: '#/components/schemas/Direction'
         currency:
@@ -253,6 +266,7 @@ components:
         - bank
         - source_type
         - kind
+        - card_type
         - direction
         - currency
         - amount_minor
@@ -284,6 +298,8 @@ components:
           type: string
         kind:
           $ref: '#/components/schemas/TransactionKind'
+        card_type:
+          $ref: '#/components/schemas/CardType'
         direction:
           $ref: '#/components/schemas/Direction'
         currency:

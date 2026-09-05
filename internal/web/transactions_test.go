@@ -27,7 +27,7 @@ func (s *ingestStoreStub) Ingest(context.Context, storage.TransactionInput) (sto
 }
 
 func TestCreateTransactionHandlerLogsSanitizedOutcome(t *testing.T) {
-	valid := `{"source_mailbox":"user@example.com","gmail_message_id":"message-secret","occurred_at":"2026-09-03T08:15:00Z","timestamp_source":"transaction","source_occurred_text":"03 Sep 2026, 08:15 SGT","bank":"dbs","source_type":"email","kind":"card_purchase","direction":"debit","currency":"SGD","amount_minor":1250,"merchant":"private merchant"}`
+	valid := `{"source_mailbox":"user@example.com","gmail_message_id":"message-secret","occurred_at":"2026-09-03T08:15:00Z","timestamp_source":"transaction","source_occurred_text":"03 Sep 2026, 08:15 SGT","bank":"dbs","source_type":"email","kind":"card_purchase","card_type":"credit_card","direction":"debit","currency":"SGD","amount_minor":1250,"merchant":"private merchant"}`
 	for _, tc := range []struct {
 		name, outcome string
 		status        int

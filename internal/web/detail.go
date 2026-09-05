@@ -59,17 +59,20 @@ var detailTemplate = template.Must(template.New("transaction-detail").Funcs(temp
 	},
 }).Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Transaction · Finance</title><link rel="stylesheet" href="/static/css/app.css"></head>
-<body><header class="navbar bg-base-200"><a class="btn btn-ghost text-xl" href="/">Finance</a></header><main id="transaction-detail" class="container mx-auto p-4">
-<a href="{{.Back}}">Back</a>
-<h1>Transaction detail</h1>
-{{if .Success}}<p role="status" aria-live="polite">{{.Success}}</p>{{end}}
-{{if .Error}}<p role="alert" aria-live="assertive">{{.Error}}</p>{{end}}
-<dl><dt>Date</dt><dd>{{.Transaction.OccurredAt}}</dd><dt>Bank</dt><dd>{{.Transaction.Bank}}</dd><dt>Type</dt><dd>{{kindLabel .Transaction.Kind}}</dd><dt>Direction</dt><dd>{{directionLabel .Transaction.Direction}}</dd><dt>Merchant</dt><dd>{{if .Transaction.Merchant}}{{.Transaction.Merchant}}{{else}}—{{end}}</dd><dt>Amount</dt><dd>{{amount .Transaction.AmountMinor .Transaction.Currency .Transaction.Direction}}</dd><dt>Source</dt><dd>{{.Transaction.SourceType}}</dd></dl>
-<form method="post" action="/transactions/{{.Transaction.ID}}" hx-action="/transactions/{{.Transaction.ID}}" hx-method="patch" hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">
+<body><header class="navbar border-b border-base-300 bg-base-100"><div class="container mx-auto px-4"><a class="btn btn-ghost px-0 text-xl font-bold" href="/">Finance</a></div></header><main id="transaction-detail" class="container mx-auto max-w-4xl space-y-6 px-4 py-8">
+<div class="space-y-2"><p class="text-sm font-medium uppercase tracking-[0.12em] text-base-content/60">Transaction</p><h1 class="text-3xl font-bold tracking-tight">Transaction detail</h1><p class="text-base-content/70">Review the transaction and update its category or notes.</p></div>
+{{if .Success}}<div class="alert alert-success" role="status" aria-live="polite"><span>{{.Success}}</span></div>{{end}}
+{{if .Error}}<div class="alert alert-error" role="alert" aria-live="assertive"><span>{{.Error}}</span></div>{{end}}
+<section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-summary-heading">
+<div class="flex flex-col gap-3 border-b border-base-300 px-6 py-5 sm:flex-row sm:items-start sm:justify-between"><div><h2 id="transaction-summary-heading" class="text-lg font-semibold">Summary</h2><p class="text-sm text-base-content/60">{{.Transaction.SourceType}}</p></div><p class="text-2xl font-bold tabular-nums sm:text-right">{{amount .Transaction.AmountMinor .Transaction.Currency .Transaction.Direction}}</p></div>
+<dl class="grid gap-x-8 gap-y-5 px-6 py-6 sm:grid-cols-2"><div><dt class="text-sm text-base-content/60">Date</dt><dd class="mt-1 font-medium">{{.Transaction.OccurredAt}}</dd></div><div><dt class="text-sm text-base-content/60">Direction</dt><dd class="mt-1 font-medium">{{directionLabel .Transaction.Direction}}</dd></div><div><dt class="text-sm text-base-content/60">Bank</dt><dd class="mt-1 font-medium">{{.Transaction.Bank}}</dd></div><div><dt class="text-sm text-base-content/60">Type</dt><dd class="mt-1 font-medium">{{kindLabel .Transaction.Kind}}</dd></div><div class="sm:col-span-2"><dt class="text-sm text-base-content/60">Merchant</dt><dd class="mt-1 font-medium">{{if .Transaction.Merchant}}{{.Transaction.Merchant}}{{else}}—{{end}}</dd></div></dl>
+</section>
+<section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-edit-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="transaction-edit-heading" class="text-lg font-semibold">Categorise transaction</h2><p class="text-sm text-base-content/60">Add context to make this transaction easier to find later.</p></div>
+<form class="space-y-5 px-6 py-6" method="post" action="/transactions/{{.Transaction.ID}}" hx-action="/transactions/{{.Transaction.ID}}" hx-method="patch" hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">
 <input type="hidden" name="return_to" value="{{.Back}}">
-<label for="category">Category</label><select id="category" name="category_id"><option value="">No category</option>{{if and .Error .Transaction.CategoryID}}<option value="{{.Transaction.CategoryID}}" selected>Submitted category</option>{{end}}{{range .Categories}}<option value="{{.ID}}" {{if selected .ID $.Transaction.CategoryID}}selected{{end}}>{{.Name}}</option>{{end}}</select>
-<label for="notes">Notes</label><textarea id="notes" name="notes" maxlength="2000" rows="8">{{if .Transaction.Notes}}{{.Transaction.Notes}}{{end}}</textarea>
-<button type="submit">Save</button></form>
+<div class="form-control"><label class="label" for="category"><span class="label-text font-medium">Category</span></label><select class="select select-bordered w-full" id="category" name="category_id"><option value="">No category</option>{{if and .Error .Transaction.CategoryID}}<option value="{{.Transaction.CategoryID}}" selected>Submitted category</option>{{end}}{{range .Categories}}<option value="{{.ID}}" {{if selected .ID $.Transaction.CategoryID}}selected{{end}}>{{.Name}}</option>{{end}}</select></div>
+<div class="form-control"><label class="label" for="notes"><span class="label-text font-medium">Notes</span></label><textarea class="textarea textarea-bordered min-h-32 w-full" id="notes" name="notes" maxlength="2000" rows="6" placeholder="Add a note about this transaction">{{if .Transaction.Notes}}{{.Transaction.Notes}}{{end}}</textarea><div class="label"><span class="label-text-alt text-base-content/60">Optional · up to 2,000 characters</span></div></div>
+<div class="flex justify-end border-t border-base-300 pt-5"><button class="btn btn-primary min-w-24" type="submit">Save changes</button></div></form></section>
 </main><script src="/static/js/htmx.min.js"></script><script src="/static/js/hx-live.min.js"></script><script src="/static/js/hx-csp.min.js"></script></body></html>`))
 
 func backURL(raw string) string {

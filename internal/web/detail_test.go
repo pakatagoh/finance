@@ -100,14 +100,14 @@ func TestDetailPatchRejectsNonHTMX(t *testing.T) {
 
 func TestDetailHTMXErrorKeepsFormAndShowsMessage(t *testing.T) {
 	f := &detailFake{tx: storage.Transaction{ID: "abc", Bank: "Bank", Currency: "SGD", AmountMinor: 100}, cats: []storage.Category{{ID: "cat", Name: "Food"}}}
-	req := httptest.NewRequest(http.MethodPatch, "/transactions/abc", strings.NewReader("category_id=cat&notes="+strings.Repeat("x", 2001)))
+	req := httptest.NewRequest(http.MethodPatch, "/transactions/abc", strings.NewReader("category_id=cat&notes="+strings.Repeat("x", 2001)+"&return_to=%2Ftransactions%3Fpage%3D2"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
 	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, req)
 	body := rec.Body.String()
 	doc := parseHTML(t, body)
-	if rec.Code != http.StatusUnprocessableEntity || doc.Find("main#transaction-detail").Length() != 1 || !strings.Contains(doc.Find("p[role=alert]").Text(), "notes must be 2,000 characters or fewer") || doc.Find("textarea[name=notes]").Length() != 1 || doc.Find("button[type=submit]").Length() != 1 || f.updated {
+	if rec.Code != http.StatusUnprocessableEntity || doc.Find("main#transaction-detail").Length() != 1 || !strings.Contains(doc.Find("[role=alert]").Text(), "notes must be 2,000 characters or fewer") || doc.Find("textarea[name=notes]").Length() != 1 || doc.Find("button[type=submit]").Length() != 1 || doc.Find(`input[name=return_to][value="/transactions?page=2"]`).Length() != 1 || f.updated {
 		t.Fatalf("HTMX error response: status=%d updated=%v body=%q", rec.Code, f.updated, body)
 	}
 }
@@ -123,7 +123,7 @@ func TestDetailHTMXInvalidCategoryPreservesSubmittedValue(t *testing.T) {
 	doc := parseHTML(t, body)
 	selected := doc.Find(`select[name=category_id] option[value="removed"]`)
 	_, selectedAttr := selected.Attr("selected")
-	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(doc.Find("p[role=alert]").Text(), "Choose an active category") || selected.Length() != 1 || !selectedAttr || doc.Find("textarea[name=notes]").Text() != "keep this" {
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(doc.Find("[role=alert]").Text(), "Choose an active category") || selected.Length() != 1 || !selectedAttr || doc.Find("textarea[name=notes]").Text() != "keep this" {
 		t.Fatalf("invalid category response: status=%d body=%q", rec.Code, body)
 	}
 }
@@ -139,8 +139,8 @@ func TestDetailSaveEscapesNotesAndPreservesBack(t *testing.T) {
 		t.Fatalf("save: code=%d updated=%v notes=%v", rec.Code, f.updated, f.notes)
 	}
 	doc := parseHTML(t, rec.Body.String())
-	if doc.Find(`a[href="/transactions?page=2"]`).Length() != 1 || doc.Find("textarea[name=notes]").Text() != "<script>bad</script>" {
-		t.Fatal("back or escaping failed")
+	if doc.Find(`a[href="/transactions?page=2"]`).Length() != 0 || doc.Find(`input[name=return_to][value="/transactions?page=2"]`).Length() != 1 || doc.Find("textarea[name=notes]").Text() != "<script>bad</script>" {
+		t.Fatal("back state or escaping failed")
 	}
 	form := doc.Find("main#transaction-detail form")
 	if form.Length() != 1 || form.AttrOr("action", "") != "/transactions/abc" || strings.Contains(rec.Body.String(), "/transactions/abc/edit") {
@@ -163,7 +163,7 @@ func TestDetailDisplaysFormattedAmount(t *testing.T) {
 			rec := httptest.NewRecorder()
 			TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/transactions/abc", nil))
 			doc := parseHTML(t, rec.Body.String())
-			got := strings.TrimSpace(doc.Find("dt").FilterFunction(func(_ int, s *goquery.Selection) bool { return strings.TrimSpace(s.Text()) == "Amount" }).Next().Text())
+			got := strings.TrimSpace(doc.Find(".tabular-nums").Text())
 			if got != tc.want {
 				t.Fatalf("detail amount = %q, want %q", got, tc.want)
 			}

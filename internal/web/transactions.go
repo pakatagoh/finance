@@ -85,7 +85,6 @@ type createRequest struct {
 	Bank               string  `json:"bank"`
 	SourceType         string  `json:"source_type"`
 	Kind               string  `json:"kind"`
-	CardType           *string `json:"card_type"`
 	Direction          string  `json:"direction"`
 	Currency           string  `json:"currency"`
 	AmountMinor        *int64  `json:"amount_minor"`
@@ -109,12 +108,11 @@ func (r createRequest) input() (storage.TransactionInput, bool) {
 	if len(r.Currency) != 3 || r.Currency != strings.ToUpper(r.Currency) {
 		return storage.TransactionInput{}, false
 	}
-	if !oneOf(r.TimestampSource, "transaction", "email_received", "inferred") || !oneOf(r.Kind, "card_purchase", "paynow", "funds_transfer", "incoming_transfer", "reversal") || !oneOf(r.Direction, "debit", "credit") || (r.Kind == "card_purchase" && !oneOfPtr(r.CardType, "credit_card", "debit_card")) || (r.Kind != "card_purchase" && r.CardType != nil) {
+	if !oneOf(r.TimestampSource, "transaction", "email_received", "inferred") || !oneOf(r.Kind, "card_purchase", "credit_card", "debit_card", "paynow", "funds_transfer", "incoming_transfer", "reversal") || !oneOf(r.Direction, "debit", "credit") {
 		return storage.TransactionInput{}, false
 	}
-	return storage.TransactionInput{SourceMailbox: r.SourceMailbox, GmailMessageID: r.GmailMessageID, OccurredAt: tm.UTC(), TimestampSource: r.TimestampSource, SourceOccurredText: r.SourceOccurredText, Bank: r.Bank, SourceType: r.SourceType, Kind: r.Kind, CardType: r.CardType, Direction: r.Direction, Currency: r.Currency, AmountMinor: *r.AmountMinor, CardSuffix: r.CardSuffix, FromAccountSuffix: r.FromAccountSuffix, Payee: r.Payee, Merchant: r.Merchant}, true
+	return storage.TransactionInput{SourceMailbox: r.SourceMailbox, GmailMessageID: r.GmailMessageID, OccurredAt: tm.UTC(), TimestampSource: r.TimestampSource, SourceOccurredText: r.SourceOccurredText, Bank: r.Bank, SourceType: r.SourceType, Kind: r.Kind, Direction: r.Direction, Currency: r.Currency, AmountMinor: *r.AmountMinor, CardSuffix: r.CardSuffix, FromAccountSuffix: r.FromAccountSuffix, Payee: r.Payee, Merchant: r.Merchant}, true
 }
-func oneOfPtr(value *string, vals ...string) bool { return value != nil && oneOf(*value, vals...) }
 func oneOf(s string, vals ...string) bool {
 	for _, v := range vals {
 		if s == v {

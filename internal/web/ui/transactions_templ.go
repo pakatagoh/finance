@@ -30,7 +30,11 @@ func signedAmount(minor int64, currency, direction string) string {
 func transactionKind(kind string) string {
 	switch kind {
 	case "card_purchase":
+		return "Card purchase"
+	case "credit_card":
 		return "Credit card"
+	case "debit_card":
+		return "Debit card"
 	case "paynow":
 		return "PayNow"
 	case "funds_transfer":

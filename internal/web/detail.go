@@ -33,6 +33,10 @@ var detailTemplate = template.Must(template.New("transaction-detail").Funcs(temp
 		switch kind {
 		case "card_purchase":
 			return "Card purchase"
+		case "credit_card":
+			return "Credit card"
+		case "debit_card":
+			return "Debit card"
 		case "paynow":
 			return "PayNow"
 		case "funds_transfer":

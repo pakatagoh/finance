@@ -20,7 +20,6 @@ type TransactionInput struct {
 	Bank               string    `json:"bank"`
 	SourceType         string    `json:"source_type"`
 	Kind               string    `json:"kind"`
-	CardType           *string   `json:"card_type"`
 	Direction          string    `json:"direction"`
 	Currency           string    `json:"currency"`
 	AmountMinor        int64     `json:"amount_minor"`
@@ -52,9 +51,9 @@ func (s TransactionStore) Ingest(ctx context.Context, in TransactionInput) (Tran
 		return Transaction{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, card_type, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, notes, created_at, updated_at`
-	args := []any{in.SourceMailbox, in.GmailMessageID, in.OccurredAt, in.TimestampSource, in.SourceOccurredText, in.Bank, in.SourceType, in.Kind, in.CardType, in.Direction, in.Currency, in.AmountMinor, in.CardSuffix, in.FromAccountSuffix, in.Payee, in.Merchant}
-	q := `INSERT INTO transactions (source_mailbox,gmail_message_id,occurred_at,timestamp_source,source_occurred_text,bank,source_type,kind,card_type,direction,currency,amount_minor,card_suffix,from_account_suffix,payee,merchant) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (source_mailbox,gmail_message_id) DO NOTHING RETURNING ` + cols
+	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, notes, created_at, updated_at`
+	args := []any{in.SourceMailbox, in.GmailMessageID, in.OccurredAt, in.TimestampSource, in.SourceOccurredText, in.Bank, in.SourceType, in.Kind, in.Direction, in.Currency, in.AmountMinor, in.CardSuffix, in.FromAccountSuffix, in.Payee, in.Merchant}
+	q := `INSERT INTO transactions (source_mailbox,gmail_message_id,occurred_at,timestamp_source,source_occurred_text,bank,source_type,kind,direction,currency,amount_minor,card_suffix,from_account_suffix,payee,merchant) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (source_mailbox,gmail_message_id) DO NOTHING RETURNING ` + cols
 	row := tx.QueryRow(ctx, q, args...)
 	out, err := scanTransaction(row)
 	if err == nil {
@@ -82,7 +81,7 @@ func (s TransactionStore) Ingest(ctx context.Context, in TransactionInput) (Tran
 
 func sameSource(t Transaction, in TransactionInput) bool {
 	a := t.TransactionInput
-	return a.SourceMailbox == in.SourceMailbox && a.GmailMessageID == in.GmailMessageID && a.OccurredAt.Equal(in.OccurredAt) && a.TimestampSource == in.TimestampSource && a.SourceOccurredText == in.SourceOccurredText && a.Bank == in.Bank && a.SourceType == in.SourceType && a.Kind == in.Kind && eq(a.CardType, in.CardType) && a.Direction == in.Direction && a.Currency == in.Currency && a.AmountMinor == in.AmountMinor && eq(a.CardSuffix, in.CardSuffix) && eq(a.FromAccountSuffix, in.FromAccountSuffix) && eq(a.Payee, in.Payee) && eq(a.Merchant, in.Merchant)
+	return a.SourceMailbox == in.SourceMailbox && a.GmailMessageID == in.GmailMessageID && a.OccurredAt.Equal(in.OccurredAt) && a.TimestampSource == in.TimestampSource && a.SourceOccurredText == in.SourceOccurredText && a.Bank == in.Bank && a.SourceType == in.SourceType && a.Kind == in.Kind && a.Direction == in.Direction && a.Currency == in.Currency && a.AmountMinor == in.AmountMinor && eq(a.CardSuffix, in.CardSuffix) && eq(a.FromAccountSuffix, in.FromAccountSuffix) && eq(a.Payee, in.Payee) && eq(a.Merchant, in.Merchant)
 }
 func eq(a, b *string) bool {
 	if a == nil || b == nil {
@@ -95,6 +94,6 @@ type rowScanner interface{ Scan(...any) error }
 
 func scanTransaction(r rowScanner) (Transaction, error) {
 	var t Transaction
-	err := r.Scan(&t.ID, &t.SourceMailbox, &t.GmailMessageID, &t.OccurredAt, &t.TimestampSource, &t.SourceOccurredText, &t.Bank, &t.SourceType, &t.Kind, &t.CardType, &t.Direction, &t.Currency, &t.AmountMinor, &t.CardSuffix, &t.FromAccountSuffix, &t.Payee, &t.Merchant, &t.CategoryID, &t.Notes, &t.CreatedAt, &t.UpdatedAt)
+	err := r.Scan(&t.ID, &t.SourceMailbox, &t.GmailMessageID, &t.OccurredAt, &t.TimestampSource, &t.SourceOccurredText, &t.Bank, &t.SourceType, &t.Kind, &t.Direction, &t.Currency, &t.AmountMinor, &t.CardSuffix, &t.FromAccountSuffix, &t.Payee, &t.Merchant, &t.CategoryID, &t.Notes, &t.CreatedAt, &t.UpdatedAt)
 	return t, err
 }

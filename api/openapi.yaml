@@ -64,8 +64,7 @@ paths:
                   source_occurred_text: '03 Sep 2026, 08:15 SGT'
                   bank: dbs
                   source_type: email
-                  kind: card_purchase
-                  card_type: credit_card
+                  kind: credit_card
                   direction: debit
                   currency: SGD
                   amount_minor: 1250
@@ -153,7 +152,8 @@ components:
       type: string
       description: FROZEN enum — mirrors PostgreSQL schema.
       enum:
-        - card_purchase
+        - credit_card
+        - debit_card
         - paynow
         - funds_transfer
         - incoming_transfer
@@ -164,15 +164,6 @@ components:
       enum:
         - debit
         - credit
-    CardType:
-      type:
-        - string
-        - 'null'
-      description: Card type; required for card purchases and null for other transaction kinds.
-      enum:
-        - credit_card
-        - debit_card
-        - null
     CreateTransactionRequest:
       type: object
       description: |
@@ -189,7 +180,6 @@ components:
         - bank
         - source_type
         - kind
-        - card_type
         - direction
         - currency
         - amount_minor
@@ -219,8 +209,6 @@ components:
           description: Source channel type (e.g. `email`).
         kind:
           $ref: '#/components/schemas/TransactionKind'
-        card_type:
-          $ref: '#/components/schemas/CardType'
         direction:
           $ref: '#/components/schemas/Direction'
         currency:
@@ -266,7 +254,6 @@ components:
         - bank
         - source_type
         - kind
-        - card_type
         - direction
         - currency
         - amount_minor
@@ -298,8 +285,6 @@ components:
           type: string
         kind:
           $ref: '#/components/schemas/TransactionKind'
-        card_type:
-          $ref: '#/components/schemas/CardType'
         direction:
           $ref: '#/components/schemas/Direction'
         currency:

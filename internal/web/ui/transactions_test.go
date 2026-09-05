@@ -52,7 +52,7 @@ func TestTransactionDisplayHelpers(t *testing.T) {
 }
 
 func TestTransactionKindAndDirectionLabels(t *testing.T) {
-	if transactionKind("card_purchase") != "Credit card" || transactionKind("funds_transfer") != "Fund transfer" || transactionKind("paynow") != "PayNow" {
+	if transactionKind("credit_card") != "Credit card" || transactionKind("debit_card") != "Debit card" || transactionKind("funds_transfer") != "Fund transfer" || transactionKind("paynow") != "PayNow" {
 		t.Fatal("transaction kind formatting")
 	}
 }

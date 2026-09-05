@@ -21,7 +21,7 @@ import (
 )
 
 func newHTTPServer(pool *pgxpool.Pool, logger *slog.Logger, token, origin string) (*http.Server, *web.HealthHandler) {
-	health := web.NewHealthHandler(storage.NewHealth(pool), migrations.LatestVersion)
+	health := web.NewHealthHandler(storage.NewHealth(pool), migrations.MustLatestVersion())
 	uiMux := http.NewServeMux()
 	uiMux.Handle("GET /health/live", health)
 	uiMux.Handle("GET /health/ready", health)

@@ -94,6 +94,15 @@ func TestContentSecurityPolicyUsesFreshNonce(t *testing.T) {
 	}
 }
 
+func TestContentSecurityPolicyAllowsDataImages(t *testing.T) {
+	rr := httptest.NewRecorder()
+	ContentSecurityPolicy(endpoint()).ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	csp := rr.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "img-src 'self' data:") {
+		t.Fatalf("CSP img-src = %q", csp)
+	}
+}
+
 func TestBrowserMiddlewareDoesNotEmitCORS(t *testing.T) {
 	rr := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)

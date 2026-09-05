@@ -150,3 +150,23 @@ func TestDetailSaveEscapesNotesAndPreservesBack(t *testing.T) {
 		t.Fatal("missing accessible success")
 	}
 }
+
+func TestDetailDisplaysFormattedAmount(t *testing.T) {
+	for _, tc := range []struct {
+		name, direction, want string
+	}{
+		{name: "debit", direction: "debit", want: "-SGD 12.50"},
+		{name: "credit", direction: "credit", want: "+SGD 12.50"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &detailFake{tx: storage.Transaction{ID: "abc", Bank: "Bank", Currency: "SGD", AmountMinor: 1250, Direction: tc.direction}}
+			rec := httptest.NewRecorder()
+			TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/transactions/abc", nil))
+			doc := parseHTML(t, rec.Body.String())
+			got := strings.TrimSpace(doc.Find("dt").FilterFunction(func(_ int, s *goquery.Selection) bool { return strings.TrimSpace(s.Text()) == "Amount" }).Next().Text())
+			if got != tc.want {
+				t.Fatalf("detail amount = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

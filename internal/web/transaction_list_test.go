@@ -78,3 +78,20 @@ func TestTransactionsHandlerFullAndHTMX(t *testing.T) {
 		t.Fatalf("HTMX response not fragment: %s", w.Body.String())
 	}
 }
+
+func TestTransactionsHandlerColumnsAndDetailAction(t *testing.T) {
+	s := &listStoreStub{page: transactions.Page{Total: 1, Items: []transactions.ListItem{{ID: "abc", MerchantPayee: "Shop", Category: "Food", Bank: "DBS", Type: "card", Currency: "SGD", Direction: "debit", AmountMinor: 1250}}}}
+	w := httptest.NewRecorder()
+	TransactionsHandler(s).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/transactions", nil))
+	doc := parseHTML(t, w.Body.String())
+	headers := doc.Find("table thead th")
+	for i, want := range []string{"Date (SGT)", "Amount", "Merchant / Payee", "Category", "Bank", "Type", "Account", "Actions"} {
+		if got := strings.TrimSpace(headers.Eq(i).Text()); got != want {
+			t.Fatalf("header %d = %q, want %q", i+1, got, want)
+		}
+	}
+	row := doc.Find("table tbody tr").First()
+	if row.Find(`td:eq(2) a`).Length() != 0 || doc.Find(`table tbody td:last-child a`).Text() != "View" || doc.Find(`table tbody td:last-child a`).AttrOr("href", "") != "/transactions/abc" {
+		t.Fatalf("merchant should not be the detail link; row=%s body=%s", row.Text(), w.Body.String())
+	}
+}

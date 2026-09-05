@@ -32,9 +32,9 @@ templ TransactionsResults(p transactions.Page) {
   if len(p.Items) == 0 {
     <div class="card bg-base-100 shadow-sm"><div class="card-body"><h2 class="card-title">No transactions yet</h2><p>New transactions will appear here after they are received from the bank tracker.</p></div></div>
   } else {
-    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Date (SGT)</th><th>Bank</th><th>Type</th><th>Merchant / Payee</th><th>Account</th><th>Category</th><th>Amount</th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Date (SGT)</th><th>Amount</th><th>Merchant / Payee</th><th>Category</th><th>Bank</th><th>Type</th><th>Account</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
     for _, item := range p.Items {
-      <tr><td>{ singaporeTime(item.OccurredAt) }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td><a class="link" href={ templ.URL("/transactions/"+item.ID) }>{ item.MerchantPayee }</a></td><td>{ suffix(item.MaskedSuffix) }</td><td>{ item.Category }</td><td class="text-right">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td></tr>
+      <tr><td>{ singaporeTime(item.OccurredAt) }</td><td class="text-right">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td><td>{ item.MerchantPayee }</td><td>{ item.Category }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td>{ suffix(item.MaskedSuffix) }</td><td><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/"+item.ID) }>View</a></td></tr>
     }
     </tbody></table></div>
   }

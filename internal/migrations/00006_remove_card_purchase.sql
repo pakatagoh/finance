@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM transactions WHERE kind = 'card_purchase') THEN
@@ -6,6 +7,7 @@ BEGIN
     END IF;
 END
 $$;
+-- +goose StatementEnd
 
 ALTER TABLE transactions DROP CONSTRAINT transactions_kind_check;
 ALTER TABLE transactions ADD CONSTRAINT transactions_kind_check

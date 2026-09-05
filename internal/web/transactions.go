@@ -108,7 +108,7 @@ func (r createRequest) input() (storage.TransactionInput, bool) {
 	if len(r.Currency) != 3 || r.Currency != strings.ToUpper(r.Currency) {
 		return storage.TransactionInput{}, false
 	}
-	if !oneOf(r.TimestampSource, "transaction", "email_received", "inferred") || !oneOf(r.Kind, "card_purchase", "credit_card", "debit_card", "paynow", "funds_transfer", "incoming_transfer", "reversal") || !oneOf(r.Direction, "debit", "credit") {
+	if !oneOf(r.TimestampSource, "transaction", "email_received", "inferred") || !oneOf(r.Kind, "credit_card", "debit_card", "paynow", "funds_transfer", "incoming_transfer", "reversal") || !oneOf(r.Direction, "debit", "credit") {
 		return storage.TransactionInput{}, false
 	}
 	return storage.TransactionInput{SourceMailbox: r.SourceMailbox, GmailMessageID: r.GmailMessageID, OccurredAt: tm.UTC(), TimestampSource: r.TimestampSource, SourceOccurredText: r.SourceOccurredText, Bank: r.Bank, SourceType: r.SourceType, Kind: r.Kind, Direction: r.Direction, Currency: r.Currency, AmountMinor: *r.AmountMinor, CardSuffix: r.CardSuffix, FromAccountSuffix: r.FromAccountSuffix, Payee: r.Payee, Merchant: r.Merchant}, true

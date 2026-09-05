@@ -58,8 +58,12 @@ func TestEmbeddedMigrationsAreAvailable(t *testing.T) {
 }
 
 func TestLatestMigrationVersionMatchesEmbeddedMigrations(t *testing.T) {
-	if migrations.LatestVersion != 6 {
-		t.Fatalf("LatestVersion = %d, want 6", migrations.LatestVersion)
+	version, err := migrations.LatestVersion()
+	if err != nil {
+		t.Fatalf("LatestVersion() error = %v", err)
+	}
+	if version != 6 {
+		t.Fatalf("LatestVersion() = %d, want 6", version)
 	}
 }
 

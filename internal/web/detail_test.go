@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pakatagoh/finance/internal/storage"
@@ -168,5 +169,26 @@ func TestDetailDisplaysFormattedAmount(t *testing.T) {
 				t.Fatalf("detail amount = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestDetailDisplaysSingaporeFriendlyDateWithoutDirectionField(t *testing.T) {
+	f := &detailFake{tx: storage.Transaction{
+		ID:         "abc",
+		OccurredAt: time.Date(2026, 9, 21, 6, 22, 0, 0, time.UTC),
+		Bank:       "Bank",
+		Currency:   "SGD",
+		Direction:  "debit",
+	}}
+	rec := httptest.NewRecorder()
+	TransactionDetailHandler(transactions.NewDetailUseCase(f)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/transactions/abc", nil))
+	doc := parseHTML(t, rec.Body.String())
+	if doc.Find("dd").FilterFunction(func(_ int, s *goquery.Selection) bool {
+		return strings.TrimSpace(s.Text()) == "21 September 2026 14:22"
+	}).Length() != 1 {
+		t.Fatalf("friendly SGT date missing from detail page: %s", rec.Body.String())
+	}
+	if doc.Find("dt").FilterFunction(func(_ int, s *goquery.Selection) bool { return strings.TrimSpace(s.Text()) == "Direction" }).Length() != 0 {
+		t.Fatal("direction should be represented by the signed amount, not a separate field")
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pakatagoh/finance/internal/storage"
 )
@@ -30,6 +31,9 @@ var errInvalidDetailForm = errors.New("invalid detail form")
 var detailTemplate = template.Must(template.New("transaction-detail").Funcs(template.FuncMap{
 	"selected": func(id string, current *string) bool { return current != nil && *current == id },
 	"amount":   func(minor int64, currency, direction string) string { return formatAmount(minor, currency, direction) },
+	"date": func(value time.Time) string {
+		return value.In(time.FixedZone("Singapore", 8*60*60)).Format("02 January 2006 15:04")
+	},
 	"kindLabel": func(kind string) string {
 		switch kind {
 		case "credit_card":
@@ -48,24 +52,15 @@ var detailTemplate = template.Must(template.New("transaction-detail").Funcs(temp
 			return kind
 		}
 	},
-	"directionLabel": func(direction string) string {
-		if direction == "credit" {
-			return "Credit"
-		}
-		if direction == "debit" {
-			return "Debit"
-		}
-		return direction
-	},
 }).Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Transaction · Finance</title><link rel="stylesheet" href="/static/css/app.css"></head>
 <body><header class="navbar border-b border-base-300 bg-base-100"><div class="container mx-auto px-4"><a class="btn btn-ghost px-0 text-xl font-bold" href="/">Finance</a></div></header><main id="transaction-detail" class="container mx-auto max-w-4xl space-y-6 px-4 py-8">
-<div class="space-y-2"><p class="text-sm font-medium uppercase tracking-[0.12em] text-base-content/60">Transaction</p><h1 class="text-3xl font-bold tracking-tight">Transaction detail</h1><p class="text-base-content/70">Review the transaction and update its category or notes.</p></div>
+<div class="space-y-2"><h1 class="text-3xl font-bold tracking-tight">Transaction detail</h1><p class="text-base-content/70">Review the transaction and update its category or notes.</p></div>
 {{if .Success}}<div class="alert alert-success" role="status" aria-live="polite"><span>{{.Success}}</span></div>{{end}}
 {{if .Error}}<div class="alert alert-error" role="alert" aria-live="assertive"><span>{{.Error}}</span></div>{{end}}
 <section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-summary-heading">
 <div class="flex flex-col gap-3 border-b border-base-300 px-6 py-5 sm:flex-row sm:items-start sm:justify-between"><div><h2 id="transaction-summary-heading" class="text-lg font-semibold">Summary</h2><p class="text-sm text-base-content/60">{{.Transaction.SourceType}}</p></div><p class="text-2xl font-bold tabular-nums sm:text-right">{{amount .Transaction.AmountMinor .Transaction.Currency .Transaction.Direction}}</p></div>
-<dl class="grid gap-x-8 gap-y-5 px-6 py-6 sm:grid-cols-2"><div><dt class="text-sm text-base-content/60">Date</dt><dd class="mt-1 font-medium">{{.Transaction.OccurredAt}}</dd></div><div><dt class="text-sm text-base-content/60">Direction</dt><dd class="mt-1 font-medium">{{directionLabel .Transaction.Direction}}</dd></div><div><dt class="text-sm text-base-content/60">Bank</dt><dd class="mt-1 font-medium">{{.Transaction.Bank}}</dd></div><div><dt class="text-sm text-base-content/60">Type</dt><dd class="mt-1 font-medium">{{kindLabel .Transaction.Kind}}</dd></div><div class="sm:col-span-2"><dt class="text-sm text-base-content/60">Merchant</dt><dd class="mt-1 font-medium">{{if .Transaction.Merchant}}{{.Transaction.Merchant}}{{else}}—{{end}}</dd></div></dl>
+<dl class="grid gap-x-8 gap-y-5 px-6 py-6 sm:grid-cols-2"><div><dt class="text-sm text-base-content/60">Date (SGT)</dt><dd class="mt-1 font-medium">{{date .Transaction.OccurredAt}}</dd></div><div><dt class="text-sm text-base-content/60">Bank</dt><dd class="mt-1 font-medium">{{.Transaction.Bank}}</dd></div><div><dt class="text-sm text-base-content/60">Type</dt><dd class="mt-1 font-medium">{{kindLabel .Transaction.Kind}}</dd></div><div class="sm:col-span-2"><dt class="text-sm text-base-content/60">Merchant</dt><dd class="mt-1 font-medium">{{if .Transaction.Merchant}}{{.Transaction.Merchant}}{{else}}—{{end}}</dd></div></dl>
 </section>
 <section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-edit-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="transaction-edit-heading" class="text-lg font-semibold">Categorise transaction</h2><p class="text-sm text-base-content/60">Add context to make this transaction easier to find later.</p></div>
 <form class="space-y-5 px-6 py-6" method="post" action="/transactions/{{.Transaction.ID}}" hx-action="/transactions/{{.Transaction.ID}}" hx-method="patch" hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">

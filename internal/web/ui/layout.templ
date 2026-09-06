@@ -22,3 +22,7 @@ templ Shell(title string, nonce string, body templ.Component) {
 templ EmptyState(message string) {
 <section class="card bg-base-100 shadow-sm"><div class="card-body"><p>{ message }</p></div></section>
 }
+
+templ PageHeader(title, subtitle string) {
+<div class="space-y-2"><h1 class="text-3xl font-bold tracking-tight">{ title }</h1><p class="text-base-content/70">{ subtitle }</p></div>
+}

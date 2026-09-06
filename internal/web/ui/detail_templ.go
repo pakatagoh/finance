@@ -103,7 +103,7 @@ func TransactionDetail(nonce string, tx storage.Transaction, categories []storag
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main id=\"transaction-detail\" class=\"container mx-auto max-w-4xl space-y-6 px-4 py-8\"><div class=\"space-y-2\"><h1 class=\"text-3xl font-bold tracking-tight\">Transaction detail</h1><p class=\"text-base-content/70\">Review the transaction and update its category or notes.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main id=\"transaction-detail\" class=\"space-y-6\"><div class=\"space-y-2\"><h1 class=\"text-3xl font-bold tracking-tight\">Transaction detail</h1><p class=\"text-base-content/70\">Review the transaction and update its category or notes.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

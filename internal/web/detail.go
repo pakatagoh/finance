@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/a-h/templ"
 	"github.com/pakatagoh/finance/internal/storage"
 	"github.com/pakatagoh/finance/internal/web/ui"
 )
@@ -18,11 +20,12 @@ type detailUseCase interface {
 }
 
 type detailPage struct {
-	Transaction storage.Transaction
-	Categories  []storage.Category
-	Back        string
-	Error       string
-	Success     string
+	Transaction   storage.Transaction
+	Categories    []storage.Category
+	Back          string
+	Error         string
+	Success       string
+	CategoryError string
 }
 
 var errInvalidDetailForm = errors.New("invalid detail form")
@@ -74,6 +77,13 @@ func updateDetail(r *http.Request, store detailUseCase, id string) (storage.Tran
 }
 
 func TransactionDetailHandler(store detailUseCase) http.Handler {
+	return TransactionDetailHandlerWithLogger(store, slog.Default())
+}
+
+func TransactionDetailHandlerWithLogger(store detailUseCase, logger *slog.Logger) http.Handler {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := transactionID(r)
 		if id == "" {
@@ -88,48 +98,120 @@ func TransactionDetailHandler(store detailUseCase) http.Handler {
 		if r.Method == http.MethodPost || r.Method == http.MethodPatch {
 			tx, back, err := updateDetail(r, store, id)
 			if err != nil {
-				page := detailPage{Transaction: tx, Categories: categories(r, store, id), Back: back}
+				if errors.Is(err, storage.ErrTransactionNotFound) {
+					renderDetailNotFound(w, r, back)
+					return
+				}
+
+				page := detailPage{Transaction: tx, Back: back}
 				if errors.Is(err, errInvalidDetailForm) {
+					loaded, cats, loadErr := store.Load(r.Context(), id)
+					if errors.Is(loadErr, storage.ErrTransactionNotFound) {
+						renderDetailNotFound(w, r, back)
+						return
+					}
+					if loaded.ID == "" {
+						logger.ErrorContext(r.Context(), "load transaction after invalid form", "error", "storage failure")
+						renderDetailLoadError(w, r, id, back)
+						return
+					}
+					page.Transaction = loaded
+					page.Categories = cats
+					if loadErr != nil {
+						page.CategoryError = categoryLoadMessage
+					}
 					renderDetailError(w, r, http.StatusBadRequest, "Invalid form", page)
-				} else if strings.Contains(err.Error(), "notes must be") {
+					return
+				}
+
+				if tx.ID == "" {
+					logger.ErrorContext(r.Context(), "load transaction for update", "error", "storage failure")
+					renderDetailLoadError(w, r, id, back)
+					return
+				}
+
+				_, cats, loadErr := store.Load(r.Context(), id)
+				page.Categories = cats
+				if loadErr != nil {
+					page.CategoryError = categoryLoadMessage
+				}
+				switch {
+				case strings.Contains(err.Error(), "notes must be"):
 					renderDetailError(w, r, http.StatusUnprocessableEntity, err.Error(), page)
-				} else if errors.Is(err, storage.ErrTransactionNotFound) {
-					http.NotFound(w, r)
-				} else if errors.Is(err, storage.ErrInvalidCategory) {
+				case errors.Is(err, storage.ErrInvalidCategory):
 					renderDetailError(w, r, http.StatusUnprocessableEntity, "Choose an active category or no category", page)
-				} else {
-					renderDetailError(w, r, http.StatusInternalServerError, "Unable to save transaction", page)
+				default:
+					logger.ErrorContext(r.Context(), "save transaction detail", "error", "storage failure")
+					renderDetailError(w, r, http.StatusInternalServerError, "We couldn’t save your changes. Your changes were not saved. Try again.", page)
 				}
 				return
 			}
 			if r.Method == http.MethodPatch {
-				_, cats, _ := store.Load(r.Context(), id)
-				renderDetailStatus(w, r, http.StatusOK, detailPage{Transaction: tx, Categories: cats, Back: back, Success: "Transaction saved."})
+				reloaded, cats, loadErr := store.Load(r.Context(), id)
+				if loadErr != nil && reloaded.ID == "" {
+					if errors.Is(loadErr, storage.ErrTransactionNotFound) {
+						renderDetailNotFound(w, r, back)
+					} else {
+						logger.ErrorContext(r.Context(), "load transaction after saving transaction", "error", "storage failure")
+						renderDetailLoadError(w, r, id, back)
+					}
+					return
+				}
+				if reloaded.ID != "" {
+					tx = reloaded
+				}
+				page := detailPage{Transaction: tx, Categories: cats, Back: back, Success: "Transaction saved."}
+				if loadErr != nil {
+					logger.ErrorContext(r.Context(), "load categories after saving transaction", "error", "storage failure")
+					page.CategoryError = categoryLoadMessage
+				}
+				renderDetailStatus(w, r, http.StatusOK, page)
 				return
 			}
 			http.Redirect(w, r, detailURL(id, back), http.StatusSeeOther)
 			return
 		}
+
 		tx, cats, err := store.Load(r.Context(), id)
 		if errors.Is(err, storage.ErrTransactionNotFound) {
-			http.NotFound(w, r)
+			renderDetailNotFound(w, r, back)
 			return
 		}
 		if err != nil {
-			http.Error(w, "Unable to load transaction", http.StatusInternalServerError)
+			logger.ErrorContext(r.Context(), "load transaction detail", "error", "storage failure")
+			if tx.ID != "" {
+				renderDetailStatus(w, r, http.StatusInternalServerError, detailPage{Transaction: tx, Back: back, CategoryError: categoryLoadMessage})
+				return
+			}
+			renderDetailLoadError(w, r, id, back)
 			return
 		}
 		renderDetailStatus(w, r, http.StatusOK, detailPage{Transaction: tx, Categories: cats, Back: back})
 	})
 }
 
-func categories(r *http.Request, store detailUseCase, id string) []storage.Category {
-	_, c, _ := store.Load(r.Context(), id)
-	return c
+const categoryLoadMessage = "We couldn’t load categories. Your current category will be kept."
+
+func renderDetailLoadError(w http.ResponseWriter, r *http.Request, id, back string) {
+	var component templ.Component = ui.TransactionDetailLoadErrorPage(CSPNonce(r.Context()), id, back)
+	if isHTMX(r) {
+		component = ui.TransactionDetailLoadError(CSPNonce(r.Context()), id, back)
+	}
+	renderHTML(w, r, http.StatusInternalServerError, component)
+}
+
+func renderDetailNotFound(w http.ResponseWriter, r *http.Request, back string) {
+	var component templ.Component = ui.TransactionDetailNotFoundPage(CSPNonce(r.Context()), back)
+	if isHTMX(r) {
+		component = ui.TransactionDetailNotFound(back)
+	}
+	renderHTML(w, r, http.StatusNotFound, component)
 }
 
 func renderDetailStatus(w http.ResponseWriter, r *http.Request, status int, p detailPage) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	_ = ui.TransactionDetailPage(CSPNonce(r.Context()), p.Transaction, p.Categories, p.Back, p.Error, p.Success).Render(r.Context(), w)
+	var component templ.Component = ui.TransactionDetailPage(CSPNonce(r.Context()), p.Transaction, p.Categories, p.Back, p.Error, p.Success, p.CategoryError)
+	if isHTMX(r) {
+		component = ui.TransactionDetail(CSPNonce(r.Context()), p.Transaction, p.Categories, p.Back, p.Error, p.Success, p.CategoryError)
+	}
+	renderHTML(w, r, status, component)
 }

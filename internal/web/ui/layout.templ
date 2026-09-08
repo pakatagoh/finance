@@ -23,6 +23,12 @@ templ EmptyState(message string) {
 <section class="card bg-base-100 shadow-sm"><div class="card-body"><p>{ message }</p></div></section>
 }
 
+templ OperationalError(nonce, message, retryURL, target string) {
+<div class="alert alert-error items-start" role="alert" aria-live="assertive">
+  <div><h2 class="font-semibold">{ message }</h2><p class="mt-1">Try again.</p><div class="mt-3"><a class="btn btn-sm btn-outline" href={ templ.URL(retryURL) } hx-get={ retryURL } hx-nonce={ nonce } hx-target={ target } hx-swap="outerHTML">Retry</a></div></div>
+</div>
+}
+
 templ PageHeader(title, subtitle string) {
 <div class="space-y-2"><h1 class="text-3xl font-bold tracking-tight">{ title }</h1><p class="text-base-content/70">{ subtitle }</p></div>
 }

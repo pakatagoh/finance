@@ -1,18 +1,23 @@
 package web
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/pakatagoh/finance/internal/transactions"
 )
 
 type listStoreStub struct {
 	page      transactions.Page
+	err       error
 	gotFilter transactions.Filter
 	gotPage   int
 }
@@ -20,7 +25,75 @@ type listStoreStub struct {
 func (s *listStoreStub) Execute(_ context.Context, f transactions.Filter, p int) (transactions.Page, error) {
 	s.gotFilter = f
 	s.gotPage = p
-	return s.page, nil
+	return s.page, s.err
+}
+
+func TestTransactionsHandlerQueryFailureRendersUsableHTML(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		hx   bool
+	}{{name: "full page"}, {name: "HTMX fragment", hx: true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := TransactionsHandler(&listStoreStub{err: errors.New("database unavailable")})
+			r := httptest.NewRequest(http.MethodGet, "/transactions?bank=DBS&type=card&category=Food&page=2", nil)
+			if tc.hx {
+				r.Header.Set("HX-Request", "true")
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			doc := parseHTML(t, w.Body.String())
+			if w.Code != http.StatusInternalServerError || !strings.HasPrefix(w.Header().Get("Content-Type"), "text/html") {
+				t.Fatalf("status/type: %d %q", w.Code, w.Header().Get("Content-Type"))
+			}
+			if doc.Find("#transaction-results").Length() != 1 || !strings.Contains(doc.Find("[role=alert]").Text(), "We couldn’t load your transactions") {
+				t.Fatalf("missing list error: %s", w.Body.String())
+			}
+			if doc.Find(`input[name=bank][value="DBS"]`).Length() != 1 || doc.Find(`input[name=type][value="card"]`).Length() != 1 || doc.Find(`input[name=category][value="Food"]`).Length() != 1 {
+				t.Fatalf("filters not preserved: %s", w.Body.String())
+			}
+			retry := doc.Find(`[role=alert] a[href="/transactions?bank=DBS&category=Food&page=2&type=card"]`)
+			if retry.Length() != 1 || retry.AttrOr("hx-get", "") == "" || retry.AttrOr("hx-target", "") != "#transaction-results" {
+				t.Fatalf("retry unavailable: %s", w.Body.String())
+			}
+			if tc.hx && strings.Contains(w.Body.String(), "<html") {
+				t.Fatalf("HTMX response contains shell")
+			}
+			if !tc.hx && (doc.Find("html").Length() != 1 || doc.Find("header a").Text() != "Finance") {
+				t.Fatalf("normal response missing shell")
+			}
+		})
+	}
+}
+
+func TestTransactionsHandlerDoesNotLogRawStorageError(t *testing.T) {
+	var logs bytes.Buffer
+	secret := "postgres://user:password@db/finance"
+	h := TransactionsHandlerWithLogger(
+		&listStoreStub{err: errors.New(secret)},
+		slog.New(slog.NewJSONHandler(&logs, nil)),
+	)
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/transactions", nil))
+	if strings.Contains(logs.String(), secret) || !strings.Contains(logs.String(), "storage failure") {
+		t.Fatalf("unsafe or missing list error log: %s", logs.String())
+	}
+}
+
+func TestTransactionsErrorHTMXControlsCarryResponseNonce(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/transactions", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+	ContentSecurityPolicy(TransactionsHandler(&listStoreStub{err: errors.New("unavailable")})).ServeHTTP(rec, req)
+	nonce := responseNonce(t, rec)
+	doc := parseHTML(t, rec.Body.String())
+	controls := doc.Find("[hx-get]")
+	if controls.Length() == 0 {
+		t.Fatal("transaction error response has no HTMX controls")
+	}
+	controls.Each(func(_ int, control *goquery.Selection) {
+		if control.AttrOr("hx-nonce", "") != nonce {
+			t.Errorf("HTMX control missing response nonce: %s", rec.Body.String())
+		}
+	})
 }
 
 func TestTransactionsHandlerEmptyStateFullAndHTMX(t *testing.T) {
@@ -76,6 +149,10 @@ func TestTransactionsHandlerFullAndHTMX(t *testing.T) {
 	h.ServeHTTP(w, r)
 	if strings.Contains(w.Body.String(), "<html") || !strings.Contains(w.Body.String(), "transaction-results") {
 		t.Fatalf("HTMX response not fragment: %s", w.Body.String())
+	}
+	doc := parseHTML(t, w.Body.String())
+	if doc.Find(`form[hx-target="#transaction-results"][hx-swap="outerHTML"]`).Length() != 1 || doc.Find(`nav a[hx-target="#transaction-results"]`).Filter(`[hx-swap="outerHTML"]`).Length() != doc.Find(`nav a[hx-target="#transaction-results"]`).Length() {
+		t.Fatalf("list controls do not replace the outer results region: %s", w.Body.String())
 	}
 }
 

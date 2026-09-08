@@ -45,11 +45,22 @@ func detailSelected(id string, current *string) bool {
     return current != nil && *current == id
 }
 
-templ TransactionDetailPage(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success string) {
-    @Shell("Transaction detail", nonce, TransactionDetail(nonce, tx, categories, back, errorMessage, success))
+func detailCategoryExists(id string, categories []storage.Category) bool {
+    for _, category := range categories {
+        if category.ID == id { return true }
+    }
+    return false
 }
 
-templ TransactionDetail(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success string) {
+func detailRetryURL(id, back string) string {
+    return "/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode()
+}
+
+templ TransactionDetailPage(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success, categoryError string) {
+    @Shell("Transaction detail", nonce, TransactionDetail(nonce, tx, categories, back, errorMessage, success, categoryError))
+}
+
+templ TransactionDetail(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success, categoryError string) {
 <main id="transaction-detail" class="space-y-6">
 @PageHeader("Transaction detail", "Review the transaction and update its category or notes.")
 if success != "" {
@@ -71,8 +82,17 @@ if tx.Merchant != nil {
 <section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-edit-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="transaction-edit-heading" class="text-lg font-semibold">Categorise transaction</h2><p class="text-sm text-base-content/60">Add context to make this transaction easier to find later.</p></div>
 <form class="space-y-5 px-6 py-6" method="post" action={ "/transactions/" + url.PathEscape(tx.ID) } hx-action={ "/transactions/" + url.PathEscape(tx.ID) } hx-method="patch" hx-nonce={ nonce } hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">
 <input type="hidden" name="return_to" value={ back }/>
-<div class="form-control"><label class="label" for="category"><span class="label-text font-medium">Category</span></label><select class="select select-bordered w-full" id="category" name="category_id"><option value="">No category</option>
-if errorMessage != "" && tx.CategoryID != nil {
+if categoryError != "" {
+<div class="alert alert-error" role="alert"><span>{ categoryError }</span><a class="btn btn-sm btn-outline" href={ templ.URL(detailRetryURL(tx.ID, back)) }>Retry</a></div>
+}
+<div class="form-control"><label class="label" for="category"><span class="label-text font-medium">Category</span></label>
+if categoryError != "" && tx.CategoryID != nil {
+<input type="hidden" name="category_id" value={ *tx.CategoryID }/>
+}
+<select class="select select-bordered w-full" id="category" name="category_id" disabled?={ categoryError != "" }><option value="">No category</option>
+if categoryError != "" && tx.CategoryID != nil {
+<option value={ *tx.CategoryID } selected>Current category temporarily unavailable</option>
+} else if errorMessage != "" && tx.CategoryID != nil && !detailCategoryExists(*tx.CategoryID, categories) {
 <option value={ *tx.CategoryID } selected>Submitted category</option>
 }
 for _, category := range categories {
@@ -89,5 +109,27 @@ if tx.Notes != nil {
 }
 </textarea><div class="label"><span class="label-text-alt text-base-content/60">Optional · up to 2,000 characters</span></div></div>
 <div class="flex justify-end border-t border-base-300 pt-5"><button class="btn btn-primary min-w-24" type="submit">Save changes</button></div></form></section>
+</main>
+}
+
+templ TransactionDetailLoadErrorPage(nonce, id, back string) {
+    @Shell("Transaction detail", nonce, TransactionDetailLoadError(nonce, id, back))
+}
+
+templ TransactionDetailLoadError(nonce, id, back string) {
+<main id="transaction-detail" class="space-y-6">
+  @PageHeader("Transaction detail", "Review the transaction and update its category or notes.")
+  <div class="alert alert-error items-start" role="alert" aria-live="assertive"><div><h2 class="font-semibold">We couldn’t load this transaction.</h2><p class="mt-1">Try again or return to transactions.</p><div class="mt-3 flex gap-2"><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode()) } hx-get={ "/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode() } hx-nonce={ nonce } hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">Retry</a><a class="btn btn-sm btn-ghost" href={ templ.URL(back) }>Return to transactions</a></div></div></div>
+</main>
+}
+
+templ TransactionDetailNotFoundPage(nonce, back string) {
+    @Shell("Transaction not found", nonce, TransactionDetailNotFound(back))
+}
+
+templ TransactionDetailNotFound(back string) {
+<main id="transaction-detail" class="space-y-6">
+  @PageHeader("Transaction detail", "Review the transaction and update its category or notes.")
+  <div class="alert alert-error items-start" role="alert" aria-live="assertive"><div><h2 class="font-semibold">Transaction not found.</h2><p class="mt-1">It may have been removed or is no longer available.</p><div class="mt-3"><a class="btn btn-sm btn-ghost" href={ templ.URL(back) }>Return to transactions</a></div></div></div>
 </main>
 }

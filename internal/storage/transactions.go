@@ -32,10 +32,13 @@ type TransactionInput struct {
 type Transaction struct {
 	ID string `json:"id"`
 	TransactionInput
-	CategoryID *string   `json:"category_id"`
-	Notes      *string   `json:"notes"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	CategoryID         *string   `json:"category_id"`
+	CategorySource     string    `json:"category_source"`
+	CategoryConfidence *float64  `json:"category_confidence"`
+	CategoryModel      *string   `json:"category_model"`
+	Notes              *string   `json:"notes"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // TransactionStore atomically inserts source transactions and lists them.
@@ -51,7 +54,7 @@ func (s TransactionStore) Ingest(ctx context.Context, in TransactionInput) (Tran
 		return Transaction{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, notes, created_at, updated_at`
+	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence, category_model, notes, created_at, updated_at`
 	args := []any{in.SourceMailbox, in.GmailMessageID, in.OccurredAt, in.TimestampSource, in.SourceOccurredText, in.Bank, in.SourceType, in.Kind, in.Direction, in.Currency, in.AmountMinor, in.CardSuffix, in.FromAccountSuffix, in.Payee, in.Merchant}
 	q := `INSERT INTO transactions (source_mailbox,gmail_message_id,occurred_at,timestamp_source,source_occurred_text,bank,source_type,kind,direction,currency,amount_minor,card_suffix,from_account_suffix,payee,merchant) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (source_mailbox,gmail_message_id) DO NOTHING RETURNING ` + cols
 	row := tx.QueryRow(ctx, q, args...)
@@ -94,6 +97,6 @@ type rowScanner interface{ Scan(...any) error }
 
 func scanTransaction(r rowScanner) (Transaction, error) {
 	var t Transaction
-	err := r.Scan(&t.ID, &t.SourceMailbox, &t.GmailMessageID, &t.OccurredAt, &t.TimestampSource, &t.SourceOccurredText, &t.Bank, &t.SourceType, &t.Kind, &t.Direction, &t.Currency, &t.AmountMinor, &t.CardSuffix, &t.FromAccountSuffix, &t.Payee, &t.Merchant, &t.CategoryID, &t.Notes, &t.CreatedAt, &t.UpdatedAt)
+	err := r.Scan(&t.ID, &t.SourceMailbox, &t.GmailMessageID, &t.OccurredAt, &t.TimestampSource, &t.SourceOccurredText, &t.Bank, &t.SourceType, &t.Kind, &t.Direction, &t.Currency, &t.AmountMinor, &t.CardSuffix, &t.FromAccountSuffix, &t.Payee, &t.Merchant, &t.CategoryID, &t.CategorySource, &t.CategoryConfidence, &t.CategoryModel, &t.Notes, &t.CreatedAt, &t.UpdatedAt)
 	return t, err
 }

@@ -14,17 +14,20 @@ type Filter struct {
 }
 
 type ListItem struct {
-	ID            string
-	OccurredAt    time.Time
-	Bank          string
-	Type          string
-	Kind          string
-	MerchantPayee string
-	MaskedSuffix  string
-	Category      string
-	Currency      string
-	Direction     string
-	AmountMinor   int64
+	ID                 string
+	OccurredAt         time.Time
+	Bank               string
+	Type               string
+	Kind               string
+	MerchantPayee      string
+	MaskedSuffix       string
+	Category           string
+	Currency           string
+	Direction          string
+	AmountMinor        int64
+	CategorySource     string
+	CategoryConfidence *float64
+	CategoryModel      *string
 }
 
 type Page struct {

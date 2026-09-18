@@ -26,17 +26,20 @@ func (r TransactionListRepository) List(ctx context.Context, filter transactions
 	items := make([]transactions.ListItem, 0, len(stored.Items))
 	for _, item := range stored.Items {
 		items = append(items, transactions.ListItem{
-			ID:            item.ID,
-			OccurredAt:    item.OccurredAt,
-			Bank:          item.Bank,
-			Type:          item.Type,
-			Kind:          item.Kind,
-			MerchantPayee: item.MerchantPayee,
-			MaskedSuffix:  item.MaskedSuffix,
-			Category:      item.Category,
-			Currency:      item.Currency,
-			Direction:     item.Direction,
-			AmountMinor:   item.AmountMinor,
+			ID:                 item.ID,
+			OccurredAt:         item.OccurredAt,
+			Bank:               item.Bank,
+			Type:               item.Type,
+			Kind:               item.Kind,
+			MerchantPayee:      item.MerchantPayee,
+			MaskedSuffix:       item.MaskedSuffix,
+			Category:           item.Category,
+			Currency:           item.Currency,
+			Direction:          item.Direction,
+			AmountMinor:        item.AmountMinor,
+			CategorySource:     item.CategorySource,
+			CategoryConfidence: item.CategoryConfidence,
+			CategoryModel:      item.CategoryModel,
 		})
 	}
 	return transactions.Page{

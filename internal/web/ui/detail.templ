@@ -56,6 +56,11 @@ func detailRetryURL(id, back string) string {
     return "/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode()
 }
 
+func detailConfidence(c *float64) string {
+    if c == nil { return "" }
+    return fmt.Sprintf("%.0f%%", *c*100)
+}
+
 templ TransactionDetailPage(nonce string, tx storage.Transaction, categories []storage.Category, back, errorMessage, success, categoryError string) {
     @Shell("Transaction detail", nonce, TransactionDetail(nonce, tx, categories, back, errorMessage, success, categoryError))
 }
@@ -79,6 +84,16 @@ if tx.Merchant != nil {
 }
 </dd></div></dl>
 </section>
+if tx.CategorySource != "" {
+<section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="category-provenance-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="category-provenance-heading" class="text-lg font-semibold">Category provenance</h2><p class="text-sm text-base-content/60">How this category was assigned.</p></div><dl class="grid gap-x-8 gap-y-5 px-6 py-6 sm:grid-cols-2"><div><dt class="text-sm text-base-content/60">Source</dt><dd class="mt-1 font-medium">{ tx.CategorySource }</dd></div>
+if tx.CategoryModel != nil {
+<div><dt class="text-sm text-base-content/60">Model</dt><dd class="mt-1 font-medium">{ *tx.CategoryModel }</dd></div>
+}
+if tx.CategoryConfidence != nil {
+<div><dt class="text-sm text-base-content/60">Confidence</dt><dd class="mt-1 font-medium">{ detailConfidence(tx.CategoryConfidence) }</dd></div>
+}
+</dl></section>
+}
 <section class="rounded-box border border-base-300 bg-base-100 shadow-sm" aria-labelledby="transaction-edit-heading"><div class="border-b border-base-300 px-6 py-5"><h2 id="transaction-edit-heading" class="text-lg font-semibold">Categorise transaction</h2><p class="text-sm text-base-content/60">Add context to make this transaction easier to find later.</p></div>
 <form class="space-y-5 px-6 py-6" method="post" action={ "/transactions/" + url.PathEscape(tx.ID) } hx-action={ "/transactions/" + url.PathEscape(tx.ID) } hx-method="patch" hx-nonce={ nonce } hx-target="#transaction-detail" hx-select="#transaction-detail" hx-swap="outerHTML">
 <input type="hidden" name="return_to" value={ back }/>

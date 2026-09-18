@@ -47,6 +47,9 @@ func (s TransactionStore) UpdateEnrichment(ctx context.Context, id string, categ
         RETURNING id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence, category_model, notes, created_at, updated_at`
 	out, err := scanTransaction(s.Pool.QueryRow(ctx, q, id, categoryID, notes))
 	if err == nil {
+		if err := s.persistUserMapping(ctx, out, categoryID); err != nil {
+			return Transaction{}, err
+		}
 		return out, nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -57,6 +60,25 @@ func (s TransactionStore) UpdateEnrichment(ctx context.Context, id string, categ
 		return Transaction{}, ErrTransactionNotFound
 	}
 	return Transaction{}, err
+}
+
+func (s TransactionStore) persistUserMapping(ctx context.Context, tx Transaction, categoryID *string) error {
+	counterparty := ""
+	if tx.Merchant != nil {
+		counterparty = *tx.Merchant
+	} else if tx.Payee != nil {
+		counterparty = *tx.Payee
+	}
+	normalized := NormalizeCounterparty(counterparty)
+	if normalized == "" {
+		return nil
+	}
+	if categoryID == nil {
+		_, err := s.Pool.Exec(ctx, `DELETE FROM category_mappings WHERE normalized_counterparty=$1 AND kind=$2 AND direction=$3 AND currency=$4 AND source='user'`, normalized, tx.Kind, tx.Direction, tx.Currency)
+		return err
+	}
+	_, err := s.Pool.Exec(ctx, `INSERT INTO category_mappings (normalized_counterparty, kind, direction, currency, category_id, source, confidence, model) VALUES ($1,$2,$3,$4,$5,'user',NULL,NULL) ON CONFLICT (normalized_counterparty,kind,direction,currency) DO UPDATE SET category_id=EXCLUDED.category_id, source='user', confidence=NULL, model=NULL, categorized_at=now(), updated_at=now()`, normalized, tx.Kind, tx.Direction, tx.Currency, *categoryID)
+	return err
 }
 
 func (s TransactionStore) ActiveCategories(ctx context.Context) ([]Category, error) {

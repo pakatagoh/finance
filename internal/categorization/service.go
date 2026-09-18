@@ -100,7 +100,10 @@ func (s Service) Categorize(ctx context.Context, tx Transaction) (Result, error)
 		return Result{}, nil
 	}
 	suggestion, err := s.jev.Categorize(ctx, tx, append([]string(nil), CategoryChoices...))
-	if err != nil || suggestion.Confidence < s.threshold {
+	if err != nil {
+		return Result{}, err
+	}
+	if suggestion.Confidence < s.threshold {
 		return Result{}, nil
 	}
 	category, valid := canonicalCategory(suggestion.Category)

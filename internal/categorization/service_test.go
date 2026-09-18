@@ -85,14 +85,13 @@ func TestServiceDoesNotCategorizeIneligibleOrMeaningless(t *testing.T) {
 }
 
 func TestServiceLeavesUnchangedOnJevFailureOrLowConfidence(t *testing.T) {
-	for _, jev := range []*jevStub{{err: errors.New("unavailable")}, {suggestion: Suggestion{Category: "groceries", Confidence: .84}}} {
-		out, err := NewService(&mappingStoreStub{}, jev).Categorize(context.Background(), Transaction{Kind: "paynow", Direction: "debit", Counterparty: "Shop"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if out != (Result{}) {
-			t.Fatalf("got %#v", out)
-		}
+	out, err := NewService(&mappingStoreStub{}, &jevStub{err: errors.New("unavailable")}).Categorize(context.Background(), Transaction{Kind: "paynow", Direction: "debit", Counterparty: "Shop"})
+	if err == nil || out != (Result{}) {
+		t.Fatalf("failure result=%#v err=%v", out, err)
+	}
+	out, err = NewService(&mappingStoreStub{}, &jevStub{suggestion: Suggestion{Category: "groceries", Confidence: .84}}).Categorize(context.Background(), Transaction{Kind: "paynow", Direction: "debit", Counterparty: "Shop"})
+	if err != nil || out != (Result{}) {
+		t.Fatalf("low-confidence result=%#v err=%v", out, err)
 	}
 }
 

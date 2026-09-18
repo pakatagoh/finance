@@ -72,6 +72,9 @@ func TestRunBatchMapsActiveCategoryContinuesFailuresAndPropagatesLimit(t *testin
 	if len(store.provenance) != 1 || store.provenance[0].CategoryID != "cat-dining" {
 		t.Fatalf("provenance=%#v", store.provenance)
 	}
+	if strings.Contains(logs.String(), "jev-secret-token") {
+		t.Fatalf("logs contain secret: %s", logs.String())
+	}
 }
 
 func TestRunBatchHonorsUserMappingAndDoesNotLogSecrets(t *testing.T) {
@@ -88,8 +91,5 @@ func TestRunBatchHonorsUserMappingAndDoesNotLogSecrets(t *testing.T) {
 	}
 	if strings.Contains(logs.String(), secret) {
 		t.Fatalf("logs contain secret")
-	}
-	if strings.Contains(logs.String(), secret) {
-		t.Fatalf("logs contain secret: %s", logs.String())
 	}
 }

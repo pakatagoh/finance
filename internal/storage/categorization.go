@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,9 +19,19 @@ const (
 var ErrInvalidMappingSource = errors.New("invalid category mapping source")
 
 // NormalizeCounterparty produces the stable lookup key shared by transactions
-// and reusable category mappings.
+// and reusable category mappings. Punctuation and repeated whitespace are
+// intentionally ignored so a mapping can survive harmless bank-label changes.
 func NormalizeCounterparty(counterparty string) string {
-	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(counterparty))), " ")
+	counterparty = strings.ToLower(strings.TrimSpace(counterparty))
+	var b strings.Builder
+	for _, r := range counterparty {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte(' ')
+		}
+	}
+	return strings.Join(strings.Fields(b.String()), " ")
 }
 
 // CanReplaceMapping reports whether incoming may replace existing. User choices
@@ -96,6 +107,7 @@ func (s CategorizationStore) EligibleUncategorizedTransactions(ctx context.Conte
 		if err := rows.Scan(&item.ID, &item.Counterparty, &item.NormalizedCounterparty, &item.OccurredAt, &item.Kind, &item.Direction, &item.Currency, &item.AmountMinor, &item.Merchant, &item.Payee); err != nil {
 			return nil, err
 		}
+		item.NormalizedCounterparty = NormalizeCounterparty(item.Counterparty)
 		out = append(out, item)
 	}
 	return out, rows.Err()

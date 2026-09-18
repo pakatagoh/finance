@@ -9,6 +9,7 @@ func TestNormalizeCounterparty(t *testing.T) {
 	for _, tt := range []struct{ input, want string }{
 		{"  ACME  ", "acme"},
 		{"Acme   Coffee", "acme coffee"},
+		{"ACME, LTD.", "acme ltd"},
 		{"", ""},
 	} {
 		if got := NormalizeCounterparty(tt.input); got != tt.want {

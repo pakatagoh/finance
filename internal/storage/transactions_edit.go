@@ -26,7 +26,7 @@ type TransactionEditor interface {
 }
 
 func (s TransactionStore) GetTransaction(ctx context.Context, id string) (Transaction, error) {
-	const q = `SELECT id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence, category_model, notes, created_at, updated_at FROM transactions WHERE id=$1`
+	const q = `SELECT id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence::double precision, category_model, notes, created_at, updated_at FROM transactions WHERE id=$1`
 	out, err := scanTransaction(s.Pool.QueryRow(ctx, q, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Transaction{}, ErrTransactionNotFound
@@ -44,7 +44,7 @@ func (s TransactionStore) UpdateEnrichment(ctx context.Context, id string, categ
 	}
 	const q = `UPDATE transactions AS t SET category_id=$2, category_source=CASE WHEN $2::uuid IS NULL THEN NULL ELSE 'user' END, category_confidence=NULL, category_model=NULL, notes=$3, updated_at=now()
         WHERE t.id=$1 AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM categories c WHERE c.id=$2::uuid AND c.archived_at IS NULL))
-        RETURNING id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence, category_model, notes, created_at, updated_at`
+        RETURNING id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence::double precision, category_model, notes, created_at, updated_at`
 	out, err := scanTransaction(s.Pool.QueryRow(ctx, q, id, categoryID, notes))
 	if err == nil {
 		if err := s.persistUserMapping(ctx, out, categoryID); err != nil {

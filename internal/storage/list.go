@@ -61,7 +61,7 @@ func ListTransactions(ctx context.Context, q transactionQuerier, filter Transact
 	rows, err := q.Query(ctx, `SELECT t.id, t.occurred_at, t.bank, t.source_type, t.kind,
 		COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''), '—'),
 		COALESCE(t.card_suffix, t.from_account_suffix, ''), COALESCE(c.name, 'Uncategorised'),
-		t.currency, t.direction, t.amount_minor, t.category_source, t.category_confidence, t.category_model
+		t.currency, t.direction, t.amount_minor, t.category_source, t.category_confidence::double precision, t.category_model
 		FROM transactions t LEFT JOIN categories c ON c.id=t.category_id
 		WHERE `+whereSQL+` ORDER BY t.occurred_at DESC, t.id DESC LIMIT $`+fmt.Sprint(len(args)+1)+` OFFSET $`+fmt.Sprint(len(args)+2), append(args, TransactionPageSize, offset)...)
 	if err != nil {

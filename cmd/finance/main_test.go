@@ -23,6 +23,13 @@ func TestExecuteRecognizesCommands(t *testing.T) {
 	}
 }
 
+func TestCategorizeRejectsIncompleteLimitFlag(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if err := execute([]string{"categorize", "--limit"}, &out, &errOut); err == nil || !strings.Contains(err.Error(), "usage: finance categorize") {
+		t.Fatalf("error = %v, want usage error", err)
+	}
+}
+
 func TestStaticAssetsAreServed(t *testing.T) {
 	t.Chdir("../..")
 	server, _ := newHTTPServer(nil, slog.Default(), "token", "http://localhost:8080")

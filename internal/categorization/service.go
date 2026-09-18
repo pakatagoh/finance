@@ -19,6 +19,8 @@ var CategoryChoices = []string{
 
 type Transaction struct {
 	Kind, Direction, Currency, Counterparty string
+	NormalizedCounterparty, Merchant, Payee string
+	AmountMinor                             int64
 }
 
 type MappingKey struct {

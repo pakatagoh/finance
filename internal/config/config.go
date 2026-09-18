@@ -5,14 +5,20 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
 // Config contains validated application configuration.
 type Config struct {
-	DatabaseURL string
-	APIToken    string
-	AppOrigin   string
+	DatabaseURL          string
+	APIToken             string
+	AppOrigin            string
+	JevEndpoint          string
+	JevModel             string
+	JevToken             string
+	CategorizeThreshold  float64
+	CategorizeBatchLimit int
 }
 
 // Load reads the required environment variables.
@@ -32,6 +38,42 @@ func LoadDatabaseFrom(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	return Config{DatabaseURL: databaseURL}, nil
+}
+
+func LoadCategorization() (Config, error) { return LoadCategorizationFrom(os.Getenv) }
+
+func LoadCategorizationFrom(getenv func(string) string) (Config, error) {
+	cfg, err := LoadDatabaseFrom(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.JevEndpoint = strings.TrimSpace(getenv("FINANCE_JEV_ENDPOINT"))
+	if cfg.JevEndpoint == "" {
+		cfg.JevEndpoint = "https://api.typesafe.ai/v1/systemone"
+	}
+	cfg.JevModel = strings.TrimSpace(getenv("FINANCE_JEV_MODEL"))
+	if cfg.JevModel == "" {
+		cfg.JevModel = "jev-latest"
+	}
+	cfg.JevToken = strings.TrimSpace(getenv("FINANCE_JEV_TOKEN"))
+	if cfg.JevToken == "" {
+		return Config{}, fmt.Errorf("FINANCE_JEV_TOKEN is required")
+	}
+	cfg.CategorizeThreshold = 0.85
+	if raw := strings.TrimSpace(getenv("FINANCE_CATEGORIZE_THRESHOLD")); raw != "" {
+		cfg.CategorizeThreshold, err = strconv.ParseFloat(raw, 64)
+		if err != nil || cfg.CategorizeThreshold < 0 || cfg.CategorizeThreshold > 1 {
+			return Config{}, fmt.Errorf("FINANCE_CATEGORIZE_THRESHOLD must be between 0 and 1")
+		}
+	}
+	cfg.CategorizeBatchLimit = 100
+	if raw := strings.TrimSpace(getenv("FINANCE_CATEGORIZE_BATCH_LIMIT")); raw != "" {
+		cfg.CategorizeBatchLimit, err = strconv.Atoi(raw)
+		if err != nil || cfg.CategorizeBatchLimit <= 0 {
+			return Config{}, fmt.Errorf("FINANCE_CATEGORIZE_BATCH_LIMIT must be positive")
+		}
+	}
+	return cfg, nil
 }
 
 // LoadFrom is Load with an injectable environment reader, useful for tests.

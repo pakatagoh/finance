@@ -18,7 +18,7 @@ const version = "0.0.0-dev"
 
 func execute(args []string, out, errOut io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: finance <migrate|serve|seed>")
+		return fmt.Errorf("usage: finance <migrate|serve|categorize|seed>")
 	}
 	switch args[0] {
 	case "migrate":
@@ -31,10 +31,12 @@ func execute(args []string, out, errOut io.Writer) error {
 			return fmt.Errorf("usage: finance serve")
 		}
 		return serveCommand(context.Background(), out, errOut)
+	case "categorize":
+		return categorizeCommand(context.Background(), args[1:], out, errOut)
 	case "seed":
 		return seedCommand(context.Background(), args[1:], out, errOut)
 	default:
-		return fmt.Errorf("unknown command %q (want migrate, serve, or seed)", args[0])
+		return fmt.Errorf("unknown command %q (want migrate, serve, categorize, or seed)", args[0])
 	}
 }
 

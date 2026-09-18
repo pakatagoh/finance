@@ -50,7 +50,7 @@ func TestTransactionPatchRouteIsRegisteredAndHTMXGated(t *testing.T) {
 }
 
 func TestEmbeddedMigrationsAreAvailable(t *testing.T) {
-	for _, name := range []string{"00001_categories.sql", "00002_transactions.sql", "00003_seed_runs.sql", "00004_card_type.sql", "00005_allow_card_kinds.sql", "00006_remove_card_purchase.sql"} {
+	for _, name := range []string{"00001_categories.sql", "00002_transactions.sql", "00003_seed_runs.sql", "00004_card_type.sql", "00005_allow_card_kinds.sql", "00006_remove_card_purchase.sql", "00007_categorization.sql"} {
 		if _, err := migrations.FS.Open(name); err != nil {
 			t.Fatalf("embedded migration %q: %v", name, err)
 		}
@@ -62,8 +62,8 @@ func TestLatestMigrationVersionMatchesEmbeddedMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LatestVersion() error = %v", err)
 	}
-	if version != 6 {
-		t.Fatalf("LatestVersion() = %d, want 6", version)
+	if version != 7 {
+		t.Fatalf("LatestVersion() = %d, want 7", version)
 	}
 }
 

@@ -118,6 +118,7 @@ if detailSelected(category.ID, tx.CategoryID) {
 }
 }
 </select></div>
+<div class="form-control"><label class="label cursor-pointer justify-start gap-3" for="apply-to-matching"><input class="checkbox checkbox-primary" type="checkbox" id="apply-to-matching" name="apply_to_matching" value="on"/><span class="label-text">Apply this category to all matching transactions</span></label><p class="text-sm text-base-content/60">Matches the same merchant, transaction type, direction, and currency.</p></div>
 <div class="form-control"><label class="label" for="notes"><span class="label-text font-medium">Notes</span></label><textarea class="textarea textarea-bordered min-h-32 w-full" id="notes" name="notes" maxlength="2000" rows="6" placeholder="Add a note about this transaction">
 if tx.Notes != nil {
 { *tx.Notes }

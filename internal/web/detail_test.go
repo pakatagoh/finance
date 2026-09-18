@@ -64,7 +64,7 @@ func (f *detailFake) GetTransaction(context.Context, string) (storage.Transactio
 func (f *detailFake) ActiveCategories(context.Context) ([]storage.Category, error) {
 	return f.cats, f.catsErr
 }
-func (f *detailFake) UpdateEnrichment(_ context.Context, _ string, c, n *string) (storage.Transaction, error) {
+func (f *detailFake) UpdateEnrichment(_ context.Context, _ string, c, n *string, _ bool) (storage.Transaction, error) {
 	f.updated = true
 	f.category = c
 	f.notes = n

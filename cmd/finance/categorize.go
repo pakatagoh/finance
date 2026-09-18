@@ -14,7 +14,7 @@ import (
 )
 
 func categorizeCommand(ctx context.Context, args []string, out, errOut io.Writer) error {
-	if len(args) > 2 || (len(args) == 1 && args[0] != "--limit") || len(args) == 2 && args[0] != "--limit" {
+	if len(args) > 2 || len(args) == 1 || len(args) == 2 && args[0] != "--limit" {
 		return fmt.Errorf("usage: finance categorize [--limit N]")
 	}
 	cfg, err := config.LoadCategorization()

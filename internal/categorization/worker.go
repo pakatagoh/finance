@@ -39,9 +39,13 @@ type BatchStore interface {
 	ApplyCategoryProvenance(context.Context, string, storage.CategoryProvenance) error
 }
 
+type batchService interface {
+	Categorize(context.Context, Transaction) (Result, error)
+}
+
 // RunBatch processes a stable, bounded batch. One transaction failure is logged
 // without sensitive data and never prevents subsequent transactions.
-func RunBatch(ctx context.Context, store BatchStore, service Service, model string, limit int, logger *slog.Logger) (processed, failed int, err error) {
+func RunBatch(ctx context.Context, store BatchStore, service batchService, model string, limit int, logger *slog.Logger) (processed, failed int, err error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -62,7 +66,7 @@ func RunBatch(ctx context.Context, store BatchStore, service Service, model stri
 		result, e := service.Categorize(ctx, tx)
 		if e != nil {
 			failed++
-			logger.Error("categorization failed", "transaction_id", candidate.ID, "error", e)
+			logger.Error("categorization failed", "transaction_id", candidate.ID)
 			continue
 		}
 		if result.Category == "" {
@@ -79,7 +83,7 @@ func RunBatch(ctx context.Context, store BatchStore, service Service, model stri
 		if result.Provenance == ProvenanceMapping {
 			if e = store.ApplyCategoryProvenance(ctx, candidate.ID, storage.CategoryProvenance{CategoryID: categoryID, Source: storage.MappingSourceUser, Confidence: nil, Model: nil, CategorizedAt: time.Now().UTC()}); e != nil {
 				failed++
-				logger.Error("mapping provenance failed", "transaction_id", candidate.ID, "error", e)
+				logger.Error("mapping provenance failed", "transaction_id", candidate.ID)
 				continue
 			}
 			processed++
@@ -88,7 +92,7 @@ func RunBatch(ctx context.Context, store BatchStore, service Service, model stri
 		mapping, e := store.UpsertCategoryMapping(ctx, storage.CategoryMapping{NormalizedCounterparty: candidate.NormalizedCounterparty, Kind: candidate.Kind, Direction: candidate.Direction, Currency: candidate.Currency, CategoryID: categoryID, Source: storage.MappingSourceJev, Confidence: &confidence, Model: &model, CategorizedAt: time.Now().UTC()})
 		if e != nil {
 			failed++
-			logger.Error("categorization mapping failed", "transaction_id", candidate.ID, "error", e)
+			logger.Error("categorization mapping failed", "transaction_id", candidate.ID)
 			continue
 		}
 		// A user mapping returned by the store remains authoritative.
@@ -99,7 +103,7 @@ func RunBatch(ctx context.Context, store BatchStore, service Service, model stri
 		e = store.ApplyCategoryProvenance(ctx, candidate.ID, storage.CategoryProvenance{CategoryID: categoryID, Source: storage.MappingSourceJev, Confidence: &confidence, Model: &model, CategorizedAt: time.Now().UTC()})
 		if e != nil {
 			failed++
-			logger.Error("categorization provenance failed", "transaction_id", candidate.ID, "error", e)
+			logger.Error("categorization provenance failed", "transaction_id", candidate.ID)
 			continue
 		}
 		processed++

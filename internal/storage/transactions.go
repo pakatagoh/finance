@@ -54,7 +54,7 @@ func (s TransactionStore) Ingest(ctx context.Context, in TransactionInput) (Tran
 		return Transaction{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, category_source, category_confidence::double precision, category_model, notes, created_at, updated_at`
+	const cols = `id, source_mailbox, gmail_message_id, occurred_at, timestamp_source, source_occurred_text, bank, source_type, kind, direction, currency, amount_minor, card_suffix, from_account_suffix, payee, merchant, category_id, COALESCE(category_source, ''), category_confidence::double precision, category_model, notes, created_at, updated_at`
 	args := []any{in.SourceMailbox, in.GmailMessageID, in.OccurredAt, in.TimestampSource, in.SourceOccurredText, in.Bank, in.SourceType, in.Kind, in.Direction, in.Currency, in.AmountMinor, in.CardSuffix, in.FromAccountSuffix, in.Payee, in.Merchant}
 	q := `INSERT INTO transactions (source_mailbox,gmail_message_id,occurred_at,timestamp_source,source_occurred_text,bank,source_type,kind,direction,currency,amount_minor,card_suffix,from_account_suffix,payee,merchant) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (source_mailbox,gmail_message_id) DO NOTHING RETURNING ` + cols
 	row := tx.QueryRow(ctx, q, args...)

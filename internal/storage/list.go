@@ -17,6 +17,9 @@ type TransactionListItem struct {
 	OccurredAt                                                                   time.Time
 	Bank, Type, Kind, MerchantPayee, MaskedSuffix, Category, Currency, Direction string
 	AmountMinor                                                                  int64
+	CategorySource                                                               string
+	CategoryConfidence                                                           *float64
+	CategoryModel                                                                *string
 }
 type TransactionPage struct {
 	Items       []TransactionListItem
@@ -58,7 +61,7 @@ func ListTransactions(ctx context.Context, q transactionQuerier, filter Transact
 	rows, err := q.Query(ctx, `SELECT t.id, t.occurred_at, t.bank, t.source_type, t.kind,
 		COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''), '—'),
 		COALESCE(t.card_suffix, t.from_account_suffix, ''), COALESCE(c.name, 'Uncategorised'),
-		t.currency, t.direction, t.amount_minor
+		t.currency, t.direction, t.amount_minor, t.category_source, t.category_confidence, t.category_model
 		FROM transactions t LEFT JOIN categories c ON c.id=t.category_id
 		WHERE `+whereSQL+` ORDER BY t.occurred_at DESC, t.id DESC LIMIT $`+fmt.Sprint(len(args)+1)+` OFFSET $`+fmt.Sprint(len(args)+2), append(args, TransactionPageSize, offset)...)
 	if err != nil {
@@ -68,7 +71,7 @@ func ListTransactions(ctx context.Context, q transactionQuerier, filter Transact
 	out := TransactionPage{Total: total, Page: page, Filter: filter}
 	for rows.Next() {
 		var item TransactionListItem
-		if err := rows.Scan(&item.ID, &item.OccurredAt, &item.Bank, &item.Type, &item.Kind, &item.MerchantPayee, &item.MaskedSuffix, &item.Category, &item.Currency, &item.Direction, &item.AmountMinor); err != nil {
+		if err := rows.Scan(&item.ID, &item.OccurredAt, &item.Bank, &item.Type, &item.Kind, &item.MerchantPayee, &item.MaskedSuffix, &item.Category, &item.Currency, &item.Direction, &item.AmountMinor, &item.CategorySource, &item.CategoryConfidence, &item.CategoryModel); err != nil {
 			return TransactionPage{}, err
 		}
 		out.Items = append(out.Items, item)

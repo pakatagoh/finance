@@ -14,6 +14,7 @@ func singaporeTime(t time.Time) string { return t.In(singapore).Format("02 Janua
 func signedAmount(minor int64, currency, direction string) string { sign := "-"; if direction == "credit" { sign = "+" }; return fmt.Sprintf("%s%s %.2f", sign, currency, float64(minor)/100) }
 func transactionKind(kind string) string { switch kind { case "credit_card": return "Credit card"; case "debit_card": return "Debit card"; case "paynow": return "PayNow"; case "funds_transfer": return "Fund transfer"; case "incoming_transfer": return "Incoming transfer"; case "reversal": return "Reversal"; default: return kind } }
 func suffix(s string) string { if s == "" { return "—" }; return "•••• " + s }
+func categoryConfidence(c *float64) string { if c == nil { return "" }; return fmt.Sprintf("%.0f%%", *c*100) }
 func pageURL(f transactions.Filter, page int) string { v:=url.Values{}; if f.Bank!=""{v.Set("bank",f.Bank)};if f.Type!=""{v.Set("type",f.Type)};if f.Category!=""{v.Set("category",f.Category)};v.Set("page",strconv.Itoa(page));return "/transactions?"+v.Encode() }
 
 templ TransactionsPage(nonce string, p transactions.Page) {
@@ -62,7 +63,11 @@ templ TransactionsResults(nonce string, p transactions.Page) {
   } else {
     <div class="rounded-box border border-base-300 bg-base-100 shadow-sm"><div class="overflow-x-auto"><table class="table"><thead><tr class="bg-base-200/60"><th scope="col">Date (SGT)</th><th scope="col" class="text-right">Amount</th><th scope="col">Merchant / Payee</th><th scope="col">Category</th><th scope="col">Bank</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
     for _, item := range p.Items {
-      <tr class="hover"><td class="whitespace-nowrap text-sm">{ singaporeTime(item.OccurredAt) }</td><td class="whitespace-nowrap text-right font-semibold tabular-nums">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td><td class="font-medium">{ item.MerchantPayee }</td><td>{ item.Category }</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td class="whitespace-nowrap">{ suffix(item.MaskedSuffix) }</td><td><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/"+item.ID) }>View</a></td></tr>
+      <tr class="hover"><td class="whitespace-nowrap text-sm">{ singaporeTime(item.OccurredAt) }</td><td class="whitespace-nowrap text-right font-semibold tabular-nums">{ signedAmount(item.AmountMinor,item.Currency,item.Direction) }</td><td class="font-medium">{ item.MerchantPayee }</td><td>{ item.Category }
+if item.CategorySource == "jev" {
+<span role="img" aria-label="AI categorized by Jev" title="Categorized by Jev">✨</span>
+}
+</td><td>{ item.Bank }</td><td>{ transactionKind(item.Kind) }</td><td class="whitespace-nowrap">{ suffix(item.MaskedSuffix) }</td><td><a class="btn btn-sm btn-outline" href={ templ.URL("/transactions/"+item.ID) }>View</a></td></tr>
     }
     </tbody></table></div></div>
   }

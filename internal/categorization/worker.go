@@ -3,6 +3,7 @@ package categorization
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"time"
 
@@ -48,6 +49,9 @@ type batchService interface {
 func RunBatch(ctx context.Context, store BatchStore, service batchService, model string, limit int, logger *slog.Logger) (processed, failed int, err error) {
 	if limit <= 0 {
 		limit = 100
+	}
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	categories, err := store.ActiveCategories(ctx)
 	if err != nil {

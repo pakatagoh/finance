@@ -62,6 +62,8 @@ type CategorizationTransaction struct {
 	Kind                   string
 	Direction              string
 	Currency               string
+	AmountMinor            int64
+	Merchant, Payee        *string
 }
 
 type CategoryMapping struct {
@@ -83,7 +85,7 @@ func (s CategorizationStore) EligibleUncategorizedTransactions(ctx context.Conte
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT t.id, COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), lower(trim(regexp_replace(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), '\s+', ' ', 'g'))), t.occurred_at, t.kind, t.direction, t.currency FROM transactions t WHERE t.category_id IS NULL AND NULLIF(trim(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''))), '') IS NOT NULL ORDER BY t.occurred_at ASC, t.id ASC LIMIT $1`, limit)
+	rows, err := s.Pool.Query(ctx, `SELECT t.id, COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), lower(trim(regexp_replace(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), '\s+', ' ', 'g'))), t.occurred_at, t.kind, t.direction, t.currency, t.amount_minor, t.merchant, t.payee FROM transactions t WHERE t.category_id IS NULL AND NULLIF(trim(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''))), '') IS NOT NULL ORDER BY t.occurred_at ASC, t.id ASC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -91,10 +93,27 @@ func (s CategorizationStore) EligibleUncategorizedTransactions(ctx context.Conte
 	var out []CategorizationTransaction
 	for rows.Next() {
 		var item CategorizationTransaction
-		if err := rows.Scan(&item.ID, &item.Counterparty, &item.NormalizedCounterparty, &item.OccurredAt, &item.Kind, &item.Direction, &item.Currency); err != nil {
+		if err := rows.Scan(&item.ID, &item.Counterparty, &item.NormalizedCounterparty, &item.OccurredAt, &item.Kind, &item.Direction, &item.Currency, &item.AmountMinor, &item.Merchant, &item.Payee); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func (s CategorizationStore) ActiveCategories(ctx context.Context) ([]Category, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT id, slug, name FROM categories WHERE archived_at IS NULL ORDER BY name, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Category
+	for rows.Next() {
+		var c Category
+		if err := rows.Scan(&c.ID, &c.Slug, &c.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
 	}
 	return out, rows.Err()
 }

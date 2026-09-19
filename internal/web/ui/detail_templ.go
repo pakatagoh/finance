@@ -546,7 +546,7 @@ func TransactionDetail(nonce string, tx storage.Transaction, categories []storag
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"notes\"><span class=\"label-text font-medium\">Notes</span></label><textarea class=\"textarea textarea-bordered min-h-32 w-full\" id=\"notes\" name=\"notes\" maxlength=\"2000\" rows=\"6\" placeholder=\"Add a note about this transaction\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</select></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\" for=\"apply-to-matching\"><input class=\"checkbox checkbox-primary\" type=\"checkbox\" id=\"apply-to-matching\" name=\"apply_to_matching\" value=\"on\"><span class=\"label-text\">Apply this category to all matching transactions</span></label><p class=\"text-sm text-base-content/60\">Matches the same merchant, transaction type, direction, and currency.</p></div><div class=\"form-control\"><label class=\"label\" for=\"notes\"><span class=\"label-text font-medium\">Notes</span></label><textarea class=\"textarea textarea-bordered min-h-32 w-full\" id=\"notes\" name=\"notes\" maxlength=\"2000\" rows=\"6\" placeholder=\"Add a note about this transaction\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -554,7 +554,7 @@ func TransactionDetail(nonce string, tx storage.Transaction, categories []storag
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(*tx.Notes)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 123, Col: 11}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 124, Col: 11}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -634,7 +634,7 @@ func TransactionDetailLoadError(nonce, id, back string) templ.Component {
 		var templ_7745c5c3_Var30 templ.SafeURL
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 137, Col: 375}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 138, Col: 375}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -647,7 +647,7 @@ func TransactionDetailLoadError(nonce, id, back string) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs("/transactions/" + url.PathEscape(id) + "?" + url.Values{"return_to": {back}}.Encode())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 137, Col: 473}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 138, Col: 473}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -660,7 +660,7 @@ func TransactionDetailLoadError(nonce, id, back string) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(nonce)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 137, Col: 492}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 138, Col: 492}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -673,7 +673,7 @@ func TransactionDetailLoadError(nonce, id, back string) templ.Component {
 		var templ_7745c5c3_Var33 templ.SafeURL
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(back))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 137, Col: 642}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 138, Col: 642}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -752,7 +752,7 @@ func TransactionDetailNotFound(back string) templ.Component {
 		var templ_7745c5c3_Var36 templ.SafeURL
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(back))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 148, Col: 281}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/detail.templ`, Line: 149, Col: 281}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {

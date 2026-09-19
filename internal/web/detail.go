@@ -16,7 +16,7 @@ import (
 
 type detailUseCase interface {
 	Load(context.Context, string) (storage.Transaction, []storage.Category, error)
-	Save(context.Context, string, string, string) (storage.Transaction, error)
+	Save(context.Context, string, string, string, bool) (storage.Transaction, error)
 }
 
 type detailPage struct {
@@ -72,7 +72,7 @@ func updateDetail(r *http.Request, store detailUseCase, id string) (storage.Tran
 		return storage.Transaction{}, back, fmt.Errorf("%w: %v", errInvalidDetailForm, err)
 	}
 	back = backURL(r.FormValue("return_to"))
-	tx, err := store.Save(r.Context(), id, r.FormValue("category_id"), r.FormValue("notes"))
+	tx, err := store.Save(r.Context(), id, r.FormValue("category_id"), r.FormValue("notes"), r.FormValue("apply_to_matching") == "on")
 	return tx, back, err
 }
 

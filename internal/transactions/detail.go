@@ -35,7 +35,7 @@ func (u DetailUseCase) Load(ctx context.Context, id string) (storage.Transaction
 	return tx, categories, nil
 }
 
-func (u DetailUseCase) Save(ctx context.Context, id, categoryID, rawNotes string) (storage.Transaction, error) {
+func (u DetailUseCase) Save(ctx context.Context, id, categoryID, rawNotes string, applyToMatching bool) (storage.Transaction, error) {
 	tx, err := u.repository.GetTransaction(ctx, id)
 	if err != nil {
 		return storage.Transaction{}, err
@@ -57,7 +57,7 @@ func (u DetailUseCase) Save(ctx context.Context, id, categoryID, rawNotes string
 		tx.Notes = &notes
 	}
 
-	saved, err := u.repository.UpdateEnrichment(ctx, id, tx.CategoryID, tx.Notes)
+	saved, err := u.repository.UpdateEnrichment(ctx, id, tx.CategoryID, tx.Notes, applyToMatching)
 	if err != nil {
 		return tx, err
 	}

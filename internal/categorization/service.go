@@ -46,6 +46,10 @@ type Result struct {
 	Category   string
 	Confidence float64
 	Provenance Provenance
+	// Attempted reports that Jev was called for this transaction. It is kept
+	// separate from Category so low-confidence and invalid answers can be
+	// recorded without making the transaction look categorized.
+	Attempted bool
 }
 
 // MappingStore supplies human-authored mappings. A nil mapping means no match.
@@ -101,16 +105,17 @@ func (s Service) Categorize(ctx context.Context, tx Transaction) (Result, error)
 	}
 	suggestion, err := s.jev.Categorize(ctx, tx, append([]string(nil), CategoryChoices...))
 	if err != nil {
-		return Result{}, err
+		return Result{Attempted: true}, err
 	}
+	attempted := true
 	if suggestion.Confidence < s.threshold {
-		return Result{}, nil
+		return Result{Attempted: attempted}, nil
 	}
 	category, valid := canonicalCategory(suggestion.Category)
 	if !valid {
-		return Result{}, nil
+		return Result{Attempted: attempted}, nil
 	}
-	return Result{Category: category, Confidence: suggestion.Confidence, Provenance: ProvenanceJev}, nil
+	return Result{Category: category, Confidence: suggestion.Confidence, Provenance: ProvenanceJev, Attempted: attempted}, nil
 }
 
 func KeyFor(tx Transaction) (MappingKey, bool) {

@@ -96,7 +96,7 @@ func (s CategorizationStore) EligibleUncategorizedTransactions(ctx context.Conte
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT t.id, COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), lower(trim(regexp_replace(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), '\s+', ' ', 'g'))), t.occurred_at, t.kind, t.direction, t.currency, t.amount_minor, t.merchant, t.payee FROM transactions t WHERE t.category_id IS NULL AND NULLIF(trim(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''))), '') IS NOT NULL ORDER BY t.occurred_at ASC, t.id ASC LIMIT $1`, limit)
+	rows, err := s.Pool.Query(ctx, `SELECT t.id, COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), lower(trim(regexp_replace(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, '')), '\s+', ' ', 'g'))), t.occurred_at, t.kind, t.direction, t.currency, t.amount_minor, t.merchant, t.payee FROM transactions t WHERE t.category_id IS NULL AND t.category_attempted_at IS NULL AND NULLIF(trim(COALESCE(NULLIF(t.merchant, ''), NULLIF(t.payee, ''))), '') IS NOT NULL ORDER BY t.occurred_at ASC, t.id ASC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +128,14 @@ func (s CategorizationStore) ActiveCategories(ctx context.Context) ([]Category, 
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// MarkCategorizationAttempted prevents a transaction that has already been
+// sent to Jev from consuming tokens again when Jev cannot produce a usable
+// category.
+func (s CategorizationStore) MarkCategorizationAttempted(ctx context.Context, transactionID string) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE transactions SET category_attempted_at=COALESCE(category_attempted_at, now()), updated_at=now() WHERE id=$1`, transactionID)
+	return err
 }
 
 func scanCategoryMapping(row rowScanner) (CategoryMapping, error) {

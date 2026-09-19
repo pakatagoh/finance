@@ -10,8 +10,8 @@ func TestLatestVersionIsDiscoveredFromEmbeddedMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LatestVersion() error = %v", err)
 	}
-	if got != 7 {
-		t.Fatalf("LatestVersion() = %d, want 7", got)
+	if got != 8 {
+		t.Fatalf("LatestVersion() = %d, want 8", got)
 	}
 
 	migration, err := FS.ReadFile("00007_categorization.sql")

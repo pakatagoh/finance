@@ -38,6 +38,7 @@ type BatchStore interface {
 	ActiveCategories(context.Context) ([]storage.Category, error)
 	UpsertCategoryMapping(context.Context, storage.CategoryMapping) (storage.CategoryMapping, error)
 	ApplyCategoryProvenance(context.Context, string, storage.CategoryProvenance) error
+	MarkCategorizationAttempted(context.Context, string) error
 }
 
 type batchService interface {
@@ -68,6 +69,13 @@ func RunBatch(ctx context.Context, store BatchStore, service batchService, model
 	for _, candidate := range candidates {
 		tx := Transaction{Kind: candidate.Kind, Direction: candidate.Direction, Currency: candidate.Currency, Counterparty: candidate.Counterparty, NormalizedCounterparty: candidate.NormalizedCounterparty, AmountMinor: candidate.AmountMinor, Merchant: stringValue(candidate.Merchant), Payee: stringValue(candidate.Payee)}
 		result, e := service.Categorize(ctx, tx)
+		if result.Attempted {
+			if markErr := store.MarkCategorizationAttempted(ctx, candidate.ID); markErr != nil {
+				failed++
+				logger.Error("categorization attempt marker failed", "transaction_id", candidate.ID)
+				continue
+			}
+		}
 		if e != nil {
 			failed++
 			logger.Error("categorization failed", "transaction_id", candidate.ID)

@@ -17,6 +17,7 @@ type batchStoreFake struct {
 	limit      int
 	upserts    []storage.CategoryMapping
 	provenance []storage.CategoryProvenance
+	attempted  []string
 	failUpsert map[string]bool
 }
 
@@ -42,6 +43,11 @@ func (s *batchStoreFake) ApplyCategoryProvenance(_ context.Context, id string, p
 	return nil
 }
 
+func (s *batchStoreFake) MarkCategorizationAttempted(_ context.Context, id string) error {
+	s.attempted = append(s.attempted, id)
+	return nil
+}
+
 type batchServiceFake struct {
 	results map[string]Result
 	errors  map[string]error
@@ -49,7 +55,7 @@ type batchServiceFake struct {
 
 func (s batchServiceFake) Categorize(_ context.Context, tx Transaction) (Result, error) {
 	if err := s.errors[tx.Counterparty]; err != nil {
-		return Result{}, err
+		return Result{Attempted: true}, err
 	}
 	return s.results[tx.Counterparty], nil
 }
@@ -60,7 +66,7 @@ func TestRunBatchMapsActiveCategoryContinuesFailuresAndPropagatesLimit(t *testin
 		{ID: "bad", Counterparty: "Broken", NormalizedCounterparty: "broken", Kind: "debit_card", Direction: "debit", Currency: "GBP"},
 		{ID: "noop", Counterparty: "Low", NormalizedCounterparty: "low", Kind: "debit_card", Direction: "debit", Currency: "GBP"},
 	}}
-	service := batchServiceFake{results: map[string]Result{"Cafe": {Category: "dining", Confidence: .9}, "Low": {}}, errors: map[string]error{"Broken": errors.New("provider failed: jev-secret-token")}}
+	service := batchServiceFake{results: map[string]Result{"Cafe": {Category: "dining", Confidence: .9, Attempted: true}, "Low": {Attempted: true}}, errors: map[string]error{"Broken": errors.New("provider failed: jev-secret-token")}}
 	var logs bytes.Buffer
 	processed, failed, err := RunBatch(context.Background(), store, service, "jev-test", 7, slog.New(slog.NewTextHandler(&logs, nil)))
 	if err != nil {
@@ -71,6 +77,9 @@ func TestRunBatchMapsActiveCategoryContinuesFailuresAndPropagatesLimit(t *testin
 	}
 	if len(store.provenance) != 1 || store.provenance[0].CategoryID != "cat-dining" {
 		t.Fatalf("provenance=%#v", store.provenance)
+	}
+	if strings.Join(store.attempted, ",") != "ok,bad,noop" {
+		t.Fatalf("attempted=%v", store.attempted)
 	}
 	if strings.Contains(logs.String(), "jev-secret-token") {
 		t.Fatalf("logs contain secret: %s", logs.String())

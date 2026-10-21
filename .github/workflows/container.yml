@@ -78,7 +78,7 @@ jobs:
           go run ./cmd/finance migrate
 
       - name: Build container image
-        run: docker build --tag finance:ci .
+        run: docker build --pull --tag finance:ci .
 
   publish:
     name: Publish image
@@ -107,6 +107,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          pull: true
           push: true
           tags: ghcr.io/pakatagoh/finance:${{ steps.tag.outputs.value }}
           labels: |

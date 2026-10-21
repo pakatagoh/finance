@@ -2,15 +2,19 @@
 
 # Build with the same Debian/glibc family as the production runtime. The
 # generated templ output and CSS are produced from the checked-in sources here.
-ARG GO_VERSION=1.27.1
+ARG GO_VERSION=1.27.3
 FROM golang:${GO_VERSION}-bookworm AS build
 
 ARG TEMPL_VERSION=v0.3.960
 ARG TAILWIND_VERSION=v4.3.3
 ARG TAILWIND_SHA256=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
 
-RUN apt-get update \
+COPY build/check-ca-certificates.sh /usr/local/bin/check-ca-certificates
+# Discard inherited indexes; fail closed if the mirror only has a stale bundle.
+RUN rm -rf /var/lib/apt/lists/* \
+    && apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates curl \
+    && sh /usr/local/bin/check-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN go install github.com/a-h/templ/cmd/templ@${TEMPL_VERSION} \
@@ -33,8 +37,11 @@ RUN templ generate \
 # include only the executable and browser assets needed by the server.
 FROM debian:bookworm-slim AS runtime
 
-RUN apt-get update \
+COPY build/check-ca-certificates.sh /usr/local/bin/check-ca-certificates
+RUN rm -rf /var/lib/apt/lists/* \
+    && apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates tzdata \
+    && sh /usr/local/bin/check-ca-certificates \
     && groupadd --gid 1000 finance \
     && useradd --uid 1000 --gid 1000 --create-home --home-dir /home/finance --shell /usr/sbin/nologin finance \
     && mkdir --parents /app \

@@ -50,10 +50,10 @@ images are local-only until an explicitly authorized CI publishing change.
 - Default crontab path `/etc/finance/categorize.crontab`.
 - Includes no browser assets, compiler or Mise installation.
 
-Mount a read-only crontab and supply application credentials at runtime. The
-scheduled command will use `/app/finance categorize`; it does not execute inside
-the web container and needs no Docker socket. No production crontab is included
-or enabled by this image change.
+Mount `jobs/categorize.crontab` read-only and supply application credentials at
+runtime. It runs `/app/finance categorize` directly in this worker, not inside
+the web container, and needs no Docker socket. The file is versioned separately,
+not baked into the image; adding it to Git does not activate a schedule.
 
 ### backup
 
@@ -73,8 +73,10 @@ Mount `/var/lib/postgresql` as **tmpfs** for this worker to prevent Docker from
 creating unused anonymous database volumes on recreations. Do not attach the
 production PostgreSQL data directory to a backup worker.
 
-No backup script or production schedule is included yet. Both workers fail if
-their required crontab is missing; they do not silently invent a schedule.
+The crontabs and backup script are supplied separately under `jobs/`, not baked
+into these images. See [`worker-jobs.md`](worker-jobs.md) for mounts, schedules,
+retention and tests. Both workers fail if their required crontab is missing;
+they do not silently invent a schedule.
 
 ## Runtime settings and permissions
 
@@ -93,6 +95,8 @@ version, not every issuer's distrust status or live outbound TLS.
 python3 -m unittest discover -s build -p 'test_*.py'
 # Requires the three local image tags built above and a Linux Docker bridge.
 python3 build/smoke_container_images.py
+# Real job files, full synthetic backup/restore and retention/failure checks.
+python3 build/smoke_worker_jobs.py
 ```
 
 The smoke script uses unique temporary containers, an internal Docker network,
@@ -106,8 +110,10 @@ ports and verifies cleanup. It checks:
 - Application migrations, repeated migrations and backup-client schema dumping.
 - Actual web serving, liveness/readiness/startup endpoints and CSS delivery.
 
-This does not test production AI categorization, backup retention, scheduled job
-scripts, full dump-and-restore correctness, worker alerting or a live deployment.
-Those remain separate steps; an image build does not activate unattended jobs.
+`smoke_worker_jobs.py` additionally exercises the real backup script, restores
+all synthetic application tables, compares rows/indexes/constraints/sequence state, and
+checks successful retention and failure preservation. Neither script tests
+production AI categorization, off-host replication, alert delivery or a live
+deployment. An image build or a restore drill does not activate unattended jobs.
 
 Reference: https://mise.jdx.dev/mise-cookbook/docker.html#copy-the-binary-into-your-own-image

@@ -58,7 +58,9 @@ rebuild details.
 
 See [`docs/container-images.md`](docs/container-images.md) for the Mise-based web,
 categorizer and backup Dockerfile targets. Workers require externally mounted
-job files; building them does not enable production schedules.
+job files; building them does not enable production schedules. See
+[`docs/worker-jobs.md`](docs/worker-jobs.md) for the versioned crontabs, backup
+script and isolated full restore drill.
 
 See the documentation under `docs/` for the local database, browser security,
 and asset build workflows.

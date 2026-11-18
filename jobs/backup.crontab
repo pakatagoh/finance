@@ -1,0 +1,5 @@
+# Preserve the k3s nightly 03:15 Singapore schedule and 60-minute deadline.
+# backup.sh also locks the shared backup directory against other instances.
+CRON_TZ=Asia/Singapore
+TZ=Asia/Singapore
+15 3 * * * /usr/bin/timeout --signal=TERM --kill-after=30s 3600 /bin/sh /etc/finance/backup.sh

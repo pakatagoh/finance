@@ -56,6 +56,8 @@ jobs:
         run: |
           python3 -m unittest discover -s build -p 'test_mise_config.py'
           python3 -m unittest discover -s build -p 'test_dockerfile.py'
+          python3 -m unittest discover -s build -p 'test_worker_jobs.py'
+          sh -n jobs/backup.sh
 
       - name: Check formatting
         run: test -z "$(gofmt -l .)"

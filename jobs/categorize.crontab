@@ -1,0 +1,5 @@
+# Preserve the k3s hourly schedule and 55-minute execution deadline.
+# Run a single worker instance; Supercronic's default mode disallows job overlap.
+CRON_TZ=Asia/Singapore
+TZ=Asia/Singapore
+0 * * * * /usr/bin/timeout --signal=TERM --kill-after=30s 3300 /app/finance categorize

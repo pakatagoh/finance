@@ -56,7 +56,7 @@ mise -E build run test-unit
 
 Set `CGO_ENABLED=0` when installing the scheduler if copying it into a minimal runtime. It affects compilation of Go-installed tools; changing it after installation does not rebuild an already installed tool. Check the installed executable's `go version -m` metadata when validating an image. Go-installed Supercronic prints `<unset>` for `-version` without upstream release ldflags; its module metadata records the installed version.
 
-Keep Mise and build tools out of the final application/worker images. The existing Dockerfile is still the previous two-stage implementation, with matching updated tool pins; conversion to the planned Mise-based worker targets is separate work. Existing CI generation pins are synchronized and guarded by a regression check until that conversion.
+The Dockerfile uses the shared/build Mise configs and locks to produce `runtime`, `categorizer` and `backup` targets. Mise and build tools remain in the builder only. See [`container-images.md`](container-images.md) for build commands, users, required runtime mounts and validation boundaries. CI still builds/publishes only the default web image; worker publication is separate work. Existing CI generation pins remain synchronized with the shared config and guarded by regression checks.
 
 ## Lockfiles and updates
 
@@ -67,7 +67,7 @@ mise -E development lock --platform linux-x64
 mise -E build lock --platform linux-x64
 ```
 
-Review and retain `mise.lock`, `mise.development.lock` and `mise.build.lock`. Copy the base and selected-environment configs and lockfiles into the eventual Docker builder. Add any other platform explicitly and verify it before claiming support.
+Review and retain `mise.lock`, `mise.development.lock` and `mise.build.lock`. Copy the base and selected-environment configs and lockfiles into the Docker builder. Add any other platform explicitly and verify it before claiming support.
 
 In the validated Mise 2026.10.4 release, Go source backends skip per-platform artifact entries. The Go archive and Tailwind asset have platform URLs/checksums; Go-installed programs are compiled from pinned module versions verified through Go's module system. Do not interpret `--locked` as a checksum of every compiled executable.
 

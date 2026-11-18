@@ -16,3 +16,6 @@ compose*.override.yaml
 **/*.local.toml
 .hermes/
 **/__pycache__/
+# Build only uses the shared and build overlays.
+mise.development.toml
+mise.development.lock

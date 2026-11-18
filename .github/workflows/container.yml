@@ -52,8 +52,10 @@ jobs:
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-      - name: Check Mise environment separation and tool pins
-        run: python3 -m unittest discover -s build -p 'test_mise_config.py'
+      - name: Check Mise environment separation and image contracts
+        run: |
+          python3 -m unittest discover -s build -p 'test_mise_config.py'
+          python3 -m unittest discover -s build -p 'test_dockerfile.py'
 
       - name: Check formatting
         run: test -z "$(gofmt -l .)"

@@ -4,7 +4,6 @@ Run with: python3 -m unittest discover -s build -p 'test_*.py'
 """
 
 from pathlib import Path
-import re
 import tomllib
 import unittest
 
@@ -49,20 +48,16 @@ class MiseConfigurationTests(unittest.TestCase):
         dockerfile = (ROOT / "Dockerfile").read_text()
         workflow = (ROOT / ".github/workflows/container.yml").read_text()
         self.assertIn(f"go {shared['go']}\n", module)
-        self.assertIn(f"ARG GO_VERSION={shared['go']}\n", dockerfile)
+        self.assertIn("COPY mise.toml mise.lock mise.build.toml mise.build.lock", dockerfile)
         templ = shared["go:github.com/a-h/templ/cmd/templ"]
         goose = dev["go:github.com/pressly/goose/v3/cmd/goose"]
         self.assertIn(f"github.com/a-h/templ {templ}", module)
         self.assertIn(f"github.com/pressly/goose/v3 {goose}", module)
-        self.assertIn(f"ARG TEMPL_VERSION={templ}\n", dockerfile)
+        self.assertIn("mise install --locked", dockerfile)
         self.assertIn(f"templ/cmd/templ@{templ}", workflow)
         tailwind = shared["github:tailwindlabs/tailwindcss"]
-        self.assertIn(f"ARG TAILWIND_VERSION={tailwind}\n", dockerfile)
+        self.assertNotIn("ARG TAILWIND_VERSION", dockerfile)
         self.assertIn(f"releases/download/{tailwind}/tailwindcss-linux-x64", workflow)
-        digest = re.search(r"ARG TAILWIND_SHA256=([a-f0-9]{64})", dockerfile)
-        self.assertIsNotNone(digest)
-        assert digest is not None
-        self.assertIn(digest.group(1), workflow)
 
     def test_lockfiles_match_their_owning_configuration(self):
         for environment in ("", ".development", ".build"):
@@ -83,7 +78,7 @@ class MiseConfigurationTests(unittest.TestCase):
         self.assertIn(artifact["url"], workflow)
         self.assertTrue(artifact["checksum"].startswith("sha256:"))
         digest = artifact["checksum"].removeprefix("sha256:")
-        self.assertIn(f"ARG TAILWIND_SHA256={digest}\n", dockerfile)
+        self.assertIn("COPY mise.toml mise.lock mise.build.toml mise.build.lock", dockerfile)
         self.assertIn(digest, workflow)
 
     def test_personal_overrides_are_excluded_from_git_and_docker(self):

@@ -56,5 +56,9 @@ CSS inputs or template classes. The same build step runs in CI and in the Docker
 image build. See [`docs/ASSETS.md`](docs/ASSETS.md) for the asset provenance and
 rebuild details.
 
+See [`docs/container-images.md`](docs/container-images.md) for the Mise-based web,
+categorizer and backup Dockerfile targets. Workers require externally mounted
+job files; building them does not enable production schedules.
+
 See the documentation under `docs/` for the local database, browser security,
 and asset build workflows.

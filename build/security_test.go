@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Exercise the same fail-closed package floor used in both image stages, without
+// Exercise the same fail-closed package floor used in independent image bases, without
 // downloading certificates or contacting any live service.
 func TestCertificatePackageFloor(t *testing.T) {
 	for _, tc := range []struct {
@@ -50,9 +50,6 @@ func TestImageTrustConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	dockerfile := string(data)
-	if !strings.Contains(dockerfile, "ARG GO_VERSION=1.27.4") {
-		t.Error("image must build with patched Go 1.27.4")
-	}
 	for path, pin := range map[string]string{"../go.mod": "go 1.27.4", "../mise.toml": "go = \"1.27.4\""} {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -62,7 +59,18 @@ func TestImageTrustConfiguration(t *testing.T) {
 			t.Errorf("%s must pin patched Go: %s", path, pin)
 		}
 	}
-	for _, stage := range strings.Split(dockerfile, "FROM ")[1:] {
+	// Only independent Bookworm bases install/check the bundle. Derived targets
+	// inherit the protected finance-base rather than repeating the installation.
+	stages := map[string]string{}
+	for _, stage := range strings.Split(dockerfile, "\nFROM ")[1:] {
+		header := strings.Fields(strings.SplitN(stage, "\n", 2)[0])
+		stages[header[len(header)-1]] = stage
+	}
+	for _, name := range []string{"build", "finance-base", "backup"} {
+		stage, ok := stages[name]
+		if !ok {
+			t.Fatalf("missing protected base stage %q", name)
+		}
 		for _, required := range []string{
 			"COPY build/check-ca-certificates.sh /usr/local/bin/check-ca-certificates",
 			"rm -rf /var/lib/apt/lists/*",
@@ -70,8 +78,13 @@ func TestImageTrustConfiguration(t *testing.T) {
 			"sh /usr/local/bin/check-ca-certificates",
 		} {
 			if !strings.Contains(stage, required) {
-				t.Errorf("image stage must contain %q", required)
+				t.Errorf("%s stage must contain %q", name, required)
 			}
+		}
+	}
+	for _, derived := range []string{"categorizer", "runtime"} {
+		if !strings.Contains(dockerfile, "FROM finance-base AS "+derived) {
+			t.Errorf("%s must inherit the protected finance-base", derived)
 		}
 	}
 	workflow, err := os.ReadFile("../.github/workflows/container.yml")

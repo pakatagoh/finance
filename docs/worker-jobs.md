@@ -130,10 +130,11 @@ and preservation of existing archives on a real connection/database failure.
 It publishes no host ports and verifies removal of its temporary containers,
 network and backup files.
 
-## Not enabled or solved by this change
+## Deployment boundaries
 
-- No Compose deployment, CI worker-image publishing, Arcane sync or live schedule
-  activation. Matching multi-target worker images are a prerequisite.
+- [CI publishes matching worker images](container-images.md#ci-and-publishing)
+  after the synthetic drill passes on `main`. Publishing does not deploy a
+  Compose project, sync Arcane or activate schedules.
 - No off-host replication, backup encryption, failure alerts or missed-backup
   monitoring. Local-only backups cannot survive loss of the host/storage.
 - Supercronic does not replay downtime schedules. Decide catch-up and alerts

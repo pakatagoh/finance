@@ -2,7 +2,7 @@
 """Exercise already-built images using only temporary containers and synthetic data.
 
 No host ports, production credentials or persistent database volumes are used.
-Run manually; this intentionally does not match unittest's test_*.py discovery.
+Run directly or through CI; unittest discovery does not run this script.
 """
 
 import argparse

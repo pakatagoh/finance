@@ -39,8 +39,8 @@ No production credentials are required to build.
 - Includes generated static browser assets, CA bundle and timezone data.
 - No Mise, compiler, templ, Tailwind, Supercronic or PostgreSQL client tools.
 
-The existing workflow still builds/publishes this default image; the new worker
-images are local-only until an explicitly authorized CI publishing change.
+The `runtime` target remains the default and uses the existing GHCR package
+tracked by k3s/Flux.
 
 ### categorizer
 
@@ -88,6 +88,27 @@ credentials remain runtime environment values, not image layers/build arguments.
 Web and categorizer inherit the CA-floor check from `finance-base`; independent
 builder and backup bases enforce it too. The guard validates Debian package
 version, not every issuer's distrust status or live outbound TLS.
+
+## CI and publishing
+
+CI builds and smoke-tests all three `linux/amd64` targets on pull requests and
+pushes to `main`. On a successful push to `main`, the publish job loads the
+tested images from the same workflow run instead of rebuilding them. One
+`<timestamp-ms>-<7-character-commit>` tag identifies the matching set:
+
+- Web/migrations: `ghcr.io/pakatagoh/finance:<tag>`
+- Categorizer: `ghcr.io/pakatagoh/finance-categorizer:<tag>`
+- Backup: `ghcr.io/pakatagoh/finance-backup:<tag>`
+
+The workers publish first, so a worker push failure does not promote a new web
+tag to Flux. GHCR pushes are separate operations, not atomic. The existing web
+policy retains ten versions; no worker deletion policy is configured here.
+Publish jobs run one at a time and skip commits that no longer match `main`,
+so retrying an old run cannot advance Flux to an older revision. A publish-only
+retry needs the original run's image artifact; after seven days, rerun the full
+workflow for the current commit so verification can regenerate it.
+Verify pull access for both new packages before configuring Arcane. Publishing
+does not deploy the workers or start their schedules.
 
 ## Validation
 

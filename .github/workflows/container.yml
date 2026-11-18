@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -87,44 +89,101 @@ jobs:
           go run ./cmd/finance migrate
           go run ./cmd/finance migrate
 
-      - name: Build container image
-        run: docker build --pull --tag finance:ci .
+      - name: Build the three Finance images
+        shell: bash
+        run: |
+          for target in runtime categorizer backup; do
+            docker build --pull --platform linux/amd64 --provenance=false --target "$target" \
+              --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --tag "finance:ci-$target" .
+          done
+
+      - name: Smoke-test images and restore a synthetic backup
+        run: |
+          python3 build/smoke_container_images.py --prefix finance:ci
+          python3 build/smoke_worker_jobs.py --prefix finance:ci
+
+      # Publish the exact builds that passed smoke tests.
+      - name: Archive verified images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          docker save finance:ci-runtime finance:ci-categorizer finance:ci-backup \
+            | gzip -1 > "$RUNNER_TEMP/finance-images.tar.gz"
+
+      - name: Upload verified images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-images
+          path: ${{ runner.temp }}/finance-images.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
 
   publish:
-    name: Publish image
+    name: Publish images
     needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    concurrency:
+      group: finance-image-publish
+      queue: max
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
+      - name: Compute image tag
+        id: tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$main_sha" != "$GITHUB_SHA" ]]; then
+            echo 'Skipping publication: this run no longer matches main.'
+            exit 0
+          fi
+          echo "value=$(date +%s%3N)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Download verified images
+        if: steps.tag.outputs.value != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: finance-images
+          path: ${{ runner.temp }}
+
+      - name: Load verified images
+        if: steps.tag.outputs.value != ''
+        run: docker load --input "$RUNNER_TEMP/finance-images.tar.gz"
 
       - name: Log in to GHCR
+        if: steps.tag.outputs.value != ''
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute image tag
-        id: tag
-        run: echo "value=$(date +%s%3N)-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Build and publish image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          pull: true
-          push: true
-          tags: ghcr.io/pakatagoh/finance:${{ steps.tag.outputs.value }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Publish the three verified images
+        if: steps.tag.outputs.value != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          registry=ghcr.io/pakatagoh
+          docker tag finance:ci-categorizer "$registry/finance-categorizer:$RELEASE_TAG"
+          docker tag finance:ci-backup "$registry/finance-backup:$RELEASE_TAG"
+          docker tag finance:ci-runtime "$registry/finance:$RELEASE_TAG"
+          docker push "$registry/finance-categorizer:$RELEASE_TAG"
+          docker push "$registry/finance-backup:$RELEASE_TAG"
+          # Keep the Flux-tracked web package and tag format unchanged.
+          docker push "$registry/finance:$RELEASE_TAG"
 
       - name: Retain newest 10 image versions
+        if: steps.tag.outputs.value != ''
         uses: actions/delete-package-versions@v5
         with:
           package-name: finance

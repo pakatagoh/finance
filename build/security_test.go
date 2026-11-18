@@ -91,9 +91,8 @@ func TestImageTrustConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"docker build --pull", "pull: true"} {
-		if !strings.Contains(string(workflow), required) {
-			t.Errorf("CI must refresh bases with %q", required)
-		}
+	// The publish job loads the verified images instead of building them again.
+	if !strings.Contains(string(workflow), "docker build --pull ") {
+		t.Error("CI must refresh bases with docker build --pull")
 	}
 }

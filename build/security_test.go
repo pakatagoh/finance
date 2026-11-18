@@ -50,10 +50,10 @@ func TestImageTrustConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	dockerfile := string(data)
-	if !strings.Contains(dockerfile, "ARG GO_VERSION=1.27.3") {
-		t.Error("image must build with patched Go 1.27.3")
+	if !strings.Contains(dockerfile, "ARG GO_VERSION=1.27.4") {
+		t.Error("image must build with patched Go 1.27.4")
 	}
-	for path, pin := range map[string]string{"../go.mod": "go 1.27.3", "../mise.toml": "go = \"1.27.3\""} {
+	for path, pin := range map[string]string{"../go.mod": "go 1.27.4", "../mise.toml": "go = \"1.27.4\""} {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)

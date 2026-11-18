@@ -21,7 +21,7 @@ The Tailwind CLI is a build dependency and is not committed. Use the version
 and checksum policy defined by the build pipeline. Prefer a pinned release over
 a moving `latest` URL.
 
-The repository uses Tailwind CSS v4.3.3's standalone CLI. The CLI scans the
+The repository uses Tailwind CSS v4.3.5's standalone CLI. The CLI scans the
 application templates for the utility and component classes used by the UI;
 styling changes should therefore be made in the templates, not in the
 generated output under `static/css/`.
@@ -39,6 +39,37 @@ The two `.mjs` files are JavaScript modules consumed by Tailwind's
 `@plugin` directive; they are not loaded by the browser. They are committed
 build inputs sourced from daisyUI releases. Their upstream release and
 checksum must be reviewed whenever they are replaced.
+
+### Vendored daisyUI 5.8.1
+
+Both bundles are the unmodified official release assets, verified against the
+SHA-256 digests published by GitHub for this release:
+
+- `daisyui.mjs`: https://github.com/saadeghi/daisyui/releases/download/v5.8.1/daisyui.mjs
+  - SHA-256: `7b0bc271e568fc96c67e4f4e672f0dc438634deb8cb014ce2d576f47b7592dc7`
+- `daisyui-theme.mjs`: https://github.com/saadeghi/daisyui/releases/download/v5.8.1/daisyui-theme.mjs
+  - SHA-256: `d748fd63ea6bcafb70d2e74373510c8a2e04c273fc8399636d3698795e713508`
+
+This upgrades the previous 5.7.27 bundles. Tailwind 4.3.5 drops the older
+bundles' two relative focus/hover selectors when hoisting `@scope (.join)`.
+daisyUI 5.8.1 includes explicit scope anchors, so the generated CSS retains
+both stacking rules without optimizer warnings. No local vendor patch is applied.
+See https://github.com/tailwindlabs/tailwindcss/issues/20668 and
+https://github.com/saadeghi/daisyui/pull/4852.
+
+After building CSS, the regression check is:
+
+```sh
+python3 -m unittest discover -s build -p 'test_assets.py'
+```
+
+A synthetic browser component fixture was compared against the pre-upgrade
+CSS at desktop and mobile widths, in light and dark mode. The sampled component
+screenshots were pixel-identical; keyboard-focus stacking and layout metrics
+matched, with no horizontal overflow. This is a component smoke check, not a
+full application or Safari audit. The headless browser has no hover-capable
+pointer; hover-rule retention is checked in the CSS, not via live mouse styling.
+
 
 `static/css/app.css` is the generated, minified browser stylesheet. It is
 checked into the repository as a usable build artifact, but the Docker and CI

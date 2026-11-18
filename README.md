@@ -16,15 +16,22 @@ templ, Goose, Tailwind, and Air toolchain, and Docker Compose for PostgreSQL.
 From the repository root:
 
 ```sh
-mise trust
-mise install
-mise run db-up
-mise run db-migrate
-mise run seed-categories
-mise run generate
-mise run css
-mise run dev
+mise -E development trust
+mise -E development install --locked
+mise -E development run db-up
+mise -E development run db-migrate
+mise -E development run seed-categories
+mise -E development run generate
+mise -E development run css
+mise -E development run dev
 ```
+
+Shared tool versions live in `mise.toml`. Development-only tools, local
+environment values and database tasks live in `mise.development.toml`;
+`mise.build.toml` adds the container scheduler without loading development
+settings. Select development explicitly with `-E development` (or set
+`MISE_ENV=development` in your local shell). See [`docs/toolchain.md`](docs/toolchain.md)
+for pins, lockfiles and build-environment commands.
 
 The development server runs at <http://localhost:8080>. `db-up` starts the
 PostgreSQL container, while the migration and seed tasks initialize the local

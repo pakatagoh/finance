@@ -1,0 +1,7 @@
+# Personal Mise overrides may contain credentials.
+**/*.local.toml
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]

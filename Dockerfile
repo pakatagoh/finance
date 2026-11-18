@@ -2,12 +2,12 @@
 
 # Build with the same Debian/glibc family as the production runtime. The
 # generated templ output and CSS are produced from the checked-in sources here.
-ARG GO_VERSION=1.27.3
+ARG GO_VERSION=1.27.4
 FROM golang:${GO_VERSION}-bookworm AS build
 
-ARG TEMPL_VERSION=v0.3.960
-ARG TAILWIND_VERSION=v4.3.3
-ARG TAILWIND_SHA256=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
+ARG TEMPL_VERSION=v0.3.1118
+ARG TAILWIND_VERSION=v4.3.5
+ARG TAILWIND_SHA256=e47695cee3f0d90623a91f3939b08bdee610eb5ad99340adff9d4145b284d6cc
 
 COPY build/check-ca-certificates.sh /usr/local/bin/check-ca-certificates
 # Discard inherited indexes; fail closed if the mirror only has a stale bundle.

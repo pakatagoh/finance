@@ -12,3 +12,7 @@ deploy/
 homelab/
 Dockerfile*
 compose*.override.yaml
+# Personal Mise overrides and local test state must never enter image layers.
+**/*.local.toml
+.hermes/
+**/__pycache__/

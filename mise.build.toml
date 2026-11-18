@@ -1,0 +1,3 @@
+# Container-build additions; shared compiler/generator pins come from mise.toml.
+[tools]
+"go:github.com/aptible/supercronic" = "v0.2.51"

@@ -43,14 +43,17 @@ jobs:
 
       - name: Install generation tools
         run: |
-          go install github.com/a-h/templ/cmd/templ@v0.3.960
+          go install github.com/a-h/templ/cmd/templ@v0.3.1118
           curl --fail --silent --show-error --location \
-            https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/tailwindcss-linux-x64 \
+            https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.5/tailwindcss-linux-x64 \
             --output "$RUNNER_TEMP/tailwindcss"
-          echo "dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a  $RUNNER_TEMP/tailwindcss" | sha256sum --check
+          echo "e47695cee3f0d90623a91f3939b08bdee610eb5ad99340adff9d4145b284d6cc  $RUNNER_TEMP/tailwindcss" | sha256sum --check
           chmod 0755 "$RUNNER_TEMP/tailwindcss"
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Check Mise environment separation and tool pins
+        run: python3 -m unittest discover -s build -p 'test_mise_config.py'
 
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
@@ -62,6 +65,9 @@ jobs:
 
       - name: Generate CSS
         run: tailwindcss -i assets/css/input.css -o static/css/app.css --minify
+
+      - name: Check generated CSS component regressions
+        run: python3 -m unittest discover -s build -p 'test_assets.py'
 
       - name: Run unit tests
         run: go test ./...

@@ -102,3 +102,33 @@ func TestRunBatchHonorsUserMappingAndDoesNotLogSecrets(t *testing.T) {
 		t.Fatalf("logs contain secret")
 	}
 }
+
+func TestRunBatchLogsAggregateReasonsWithoutPrivateDetails(t *testing.T) {
+	for _, job := range []struct {
+		kind, reason string
+		suggestion   Suggestion
+		attempts     int
+	}{
+		{"credit_card", "low_confidence", Suggestion{Category: "groceries", Confidence: .5}, 1},
+		{"credit_card", "invalid_category", Suggestion{Category: "private-provider-answer", Confidence: .99}, 1},
+		{"funds_transfer", "ineligible", Suggestion{}, 0},
+	} {
+		t.Run(job.reason, func(t *testing.T) {
+			var logs bytes.Buffer
+			store := &batchStoreFake{candidates: []storage.CategorizationTransaction{
+				{ID: "private-transaction-id", Counterparty: "private-counterparty", Kind: job.kind, Direction: "debit"},
+			}}
+			provider := &jevStub{suggestion: job.suggestion}
+			processed, failed, err := RunBatch(context.Background(), store, NewService(nil, provider), "test-model", 1, slog.New(slog.NewJSONHandler(&logs, nil)))
+			if err != nil || processed != 1 || failed != 0 || provider.calls != job.attempts || len(store.attempted) != job.attempts || len(store.provenance) != 0 {
+				t.Fatalf("unexpected batch outcome: processed=%d failed=%d calls=%d err=%v", processed, failed, provider.calls, err)
+			}
+			if want := `"` + job.reason + `":1`; !strings.Contains(logs.String(), want) {
+				t.Errorf("missing aggregate %s in %q", want, logs.String())
+			}
+			if strings.Contains(logs.String(), "private-") {
+				t.Error("batch log contains private transaction or provider details")
+			}
+		})
+	}
+}

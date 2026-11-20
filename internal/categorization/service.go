@@ -42,7 +42,19 @@ const (
 	ProvenanceJev     Provenance = "jev"
 )
 
+type skipReason string
+
+const (
+	skipIneligible      skipReason = "ineligible"
+	skipLowConfidence   skipReason = "low_confidence"
+	skipInvalidCategory skipReason = "invalid_category"
+	skipNoProvider      skipReason = "no_provider"
+	skipUserMapping     skipReason = "user_mapping_preserved"
+	skipUnspecified     skipReason = "unspecified"
+)
+
 type Result struct {
+	skipReason skipReason
 	Category   string
 	Confidence float64
 	Provenance Provenance
@@ -82,12 +94,12 @@ func NewServiceWithThreshold(mappings MappingStore, jev Jev, threshold float64) 
 	return Service{mappings: mappings, jev: jev, threshold: threshold}
 }
 
-// Categorize returns only a high-confidence, canonical category. Ineligible or
-// unresolved transactions return the zero Result, allowing safe retries.
+// Categorize returns only a high-confidence, canonical category. A result with
+// no category can carry a reason for the worker's aggregate log.
 func (s Service) Categorize(ctx context.Context, tx Transaction) (Result, error) {
 	key, ok := KeyFor(tx)
 	if !ok {
-		return Result{}, nil
+		return Result{skipReason: skipIneligible}, nil
 	}
 	if s.mappings != nil {
 		mapping, err := s.mappings.Lookup(ctx, key)
@@ -101,7 +113,7 @@ func (s Service) Categorize(ctx context.Context, tx Transaction) (Result, error)
 		}
 	}
 	if s.jev == nil {
-		return Result{}, nil
+		return Result{skipReason: skipNoProvider}, nil
 	}
 	suggestion, err := s.jev.Categorize(ctx, tx, append([]string(nil), CategoryChoices...))
 	if err != nil {
@@ -109,11 +121,11 @@ func (s Service) Categorize(ctx context.Context, tx Transaction) (Result, error)
 	}
 	attempted := true
 	if suggestion.Confidence < s.threshold {
-		return Result{Attempted: attempted}, nil
+		return Result{Attempted: attempted, skipReason: skipLowConfidence}, nil
 	}
 	category, valid := canonicalCategory(suggestion.Category)
 	if !valid {
-		return Result{Attempted: attempted}, nil
+		return Result{Attempted: attempted, skipReason: skipInvalidCategory}, nil
 	}
 	return Result{Category: category, Confidence: suggestion.Confidence, Provenance: ProvenanceJev, Attempted: attempted}, nil
 }

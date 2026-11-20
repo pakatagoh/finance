@@ -66,6 +66,7 @@ func RunBatch(ctx context.Context, store BatchStore, service batchService, model
 	if err != nil {
 		return 0, 0, err
 	}
+	skipped := make(map[skipReason]int)
 	for _, candidate := range candidates {
 		tx := Transaction{Kind: candidate.Kind, Direction: candidate.Direction, Currency: candidate.Currency, Counterparty: candidate.Counterparty, NormalizedCounterparty: candidate.NormalizedCounterparty, AmountMinor: candidate.AmountMinor, Merchant: stringValue(candidate.Merchant), Payee: stringValue(candidate.Payee)}
 		result, e := service.Categorize(ctx, tx)
@@ -82,6 +83,11 @@ func RunBatch(ctx context.Context, store BatchStore, service batchService, model
 			continue
 		}
 		if result.Category == "" {
+			reason := result.skipReason
+			if reason == "" {
+				reason = skipUnspecified
+			}
+			skipped[reason]++
 			processed++
 			continue
 		}
@@ -109,6 +115,7 @@ func RunBatch(ctx context.Context, store BatchStore, service batchService, model
 		}
 		// A user mapping returned by the store remains authoritative.
 		if mapping.Source == storage.MappingSourceUser {
+			skipped[skipUserMapping]++
 			processed++
 			continue
 		}
@@ -119,6 +126,9 @@ func RunBatch(ctx context.Context, store BatchStore, service batchService, model
 			continue
 		}
 		processed++
+	}
+	if len(skipped) > 0 {
+		logger.InfoContext(ctx, "categorization skipped transactions", "reasons", skipped)
 	}
 	return processed, failed, nil
 }

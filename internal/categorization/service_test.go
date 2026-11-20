@@ -90,7 +90,7 @@ func TestServiceLeavesUnchangedOnJevFailureOrLowConfidence(t *testing.T) {
 		t.Fatalf("failure result=%#v err=%v", out, err)
 	}
 	out, err = NewService(&mappingStoreStub{}, &jevStub{suggestion: Suggestion{Category: "groceries", Confidence: .84}}).Categorize(context.Background(), Transaction{Kind: "paynow", Direction: "debit", Counterparty: "Shop"})
-	if err != nil || out != (Result{Attempted: true}) {
+	if err != nil || !out.Attempted || out.Category != "" {
 		t.Fatalf("low-confidence result=%#v err=%v", out, err)
 	}
 }
@@ -101,7 +101,7 @@ func TestServiceThresholdCanBeConfiguredAndRejectsNonCanonicalJev(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != (Result{Attempted: true}) {
+	if !out.Attempted || out.Category != "" {
 		t.Fatalf("got %#v", out)
 	}
 }
